@@ -20,7 +20,8 @@ const codigo = html.slice(desde, hasta);
 const L = new Function(codigo + `
 return { limitar, hexARgb, rgbAHex, parsearEntradaPaleta, srgbALineal, srgbAOklab,
          prepararPaleta, colorMasCercano, aplicarPaleta, calcularTamanoDestino,
-         redimensionarArea, redimensionarVecino, aplicarAjustes, crc32, crearZip };`)();
+         redimensionarArea, redimensionarVecino, valorFuente, calcularMascara,
+         combinarMascaras, canalAImagen, crc32, crearZip };`)();
 
 let total = 0;
 function asegurar(condicion, mensaje) {
@@ -119,22 +120,52 @@ const damero4 = L.redimensionarVecino(damero, 4, 4);
 iguales(damero4.ancho, 4, "vecino: ancho de salida");
 iguales([damero4.datos[0], damero4.datos[4]], [0, 0], "vecino: duplica píxeles al ampliar");
 
-/* --- aplicarAjustes --- */
+/* --- Máscaras (valorFuente / calcularMascara / combinarMascaras / canalAImagen) --- */
 const base = imagen(1, 1, [[100, 150, 200, 200]]);
-const sinCambios = L.aplicarAjustes(base, { brillo: 0, contraste: 0, saturacion: 0, grises: false, invertir: false, umbral: null });
-iguales([...sinCambios.datos], [100, 150, 200, 200], "ajustes neutros no cambian nada");
-const brillante = L.aplicarAjustes(base, { brillo: 100, contraste: 0, saturacion: 0, grises: false, invertir: false, umbral: null });
-iguales([brillante.datos[0], brillante.datos[3]], [255, 200], "brillo +100 satura a blanco sin tocar alfa");
-const plano = L.aplicarAjustes(base, { brillo: 0, contraste: -100, saturacion: 0, grises: false, invertir: false, umbral: null });
-iguales([plano.datos[0], plano.datos[1], plano.datos[2]], [128, 128, 128], "contraste -100 aplana a gris medio");
-const grisPuro = L.aplicarAjustes(base, { brillo: 0, contraste: 0, saturacion: 0, grises: true, invertir: false, umbral: null });
-asegurar(grisPuro.datos[0] === grisPuro.datos[1] && grisPuro.datos[1] === grisPuro.datos[2], "grises iguala canales");
-const invertido = L.aplicarAjustes(base, { brillo: 0, contraste: 0, saturacion: 0, grises: false, invertir: true, umbral: null });
-iguales([...invertido.datos].slice(0, 3), [155, 105, 55], "invertir");
-const mascara = L.aplicarAjustes(base, { brillo: 0, contraste: 0, saturacion: 0, grises: false, invertir: false, umbral: 128 });
-iguales([mascara.datos[0], mascara.datos[1], mascara.datos[2]], [255, 255, 255], "umbral produce blanco o negro puros");
-const desaturado = L.aplicarAjustes(base, { brillo: 0, contraste: 0, saturacion: -100, grises: false, invertir: false, umbral: null });
-asegurar(desaturado.datos[0] === desaturado.datos[1] && desaturado.datos[1] === desaturado.datos[2], "saturación -100 desatura del todo");
+const neutra = { activa: true, fuente: "luminancia", brillo: 0, contraste: 0, invertir: false, umbral: null };
+
+iguales(L.valorFuente(100, 150, 200, "rojo"), 100, "fuente: canal rojo");
+iguales(L.valorFuente(100, 150, 200, "verde"), 150, "fuente: canal verde");
+iguales(L.valorFuente(100, 150, 200, "azul"), 200, "fuente: canal azul");
+iguales(L.valorFuente(100, 150, 200, "maximo"), 200, "fuente: valor máximo");
+iguales(L.valorFuente(100, 150, 200, "saturacion"), 100, "fuente: saturación (max - min)");
+iguales(Math.round(L.valorFuente(100, 150, 200, "luminancia")), 143, "fuente: luminancia");
+
+const canalNeutro = L.calcularMascara(base, neutra);
+iguales(canalNeutro.length, 1, "la máscara guarda un valor por píxel, no cuatro");
+iguales(canalNeutro[0], 143, "máscara neutra = luminancia del píxel");
+
+const apagada = L.calcularMascara(base, { ...neutra, activa: false });
+iguales(apagada[0], 0, "máscara desactivada: el canal queda a negro");
+
+const brillante = L.calcularMascara(base, { ...neutra, brillo: 100 });
+iguales(brillante[0], 255, "brillo +100 satura la máscara a blanco");
+
+const plana = L.calcularMascara(base, { ...neutra, contraste: -100 });
+iguales(plana[0], 128, "contraste -100 aplana a gris medio");
+
+const invertida = L.calcularMascara(base, { ...neutra, invertir: true });
+iguales(invertida[0], 112, "invertir la máscara (255 - 143)");
+
+const porDebajo = L.calcularMascara(base, { ...neutra, umbral: 128 });
+iguales(porDebajo[0], 255, "umbral por debajo del valor: blanco");
+const porEncima = L.calcularMascara(base, { ...neutra, umbral: 200 });
+iguales(porEncima[0], 0, "umbral por encima del valor: negro");
+
+const soloRojo = L.calcularMascara(base, { ...neutra, fuente: "rojo" });
+iguales(soloRojo[0], 100, "la fuente decide de qué parte la máscara");
+
+const dosPixeles = imagen(2, 1, [[0, 0, 0, 255], [255, 255, 255, 255]]);
+const canalDos = L.calcularMascara(dosPixeles, neutra);
+iguales([canalDos[0], canalDos[1]], [0, 255], "la máscara recorre todos los píxeles");
+
+const mezcla = L.combinarMascaras(base,
+  new Uint8ClampedArray([10]), new Uint8ClampedArray([20]), new Uint8ClampedArray([30]));
+iguales([...mezcla.datos], [10, 20, 30, 200], "mezcla: R metallic, G smoothness, B emisivo, alfa heredado");
+iguales([mezcla.ancho, mezcla.alto], [1, 1], "la mezcla conserva el tamaño");
+
+const canalSuelto = L.canalAImagen(base, new Uint8ClampedArray([77]));
+iguales([...canalSuelto.datos], [77, 77, 77, 200], "un canal suelto se ve en grises y mantiene el alfa");
 
 /* --- crc32 y crearZip --- */
 const bytes123 = new TextEncoder().encode("123456789");

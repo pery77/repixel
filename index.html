@@ -172,6 +172,39 @@
     border-radius: 6px; padding: 3px 8px; font-size: 0.78rem; cursor: pointer;
   }
 
+  /* Máscaras */
+  .canal {
+    display: inline-grid; place-items: center;
+    width: 17px; height: 17px;
+    border-radius: 5px;
+    font-size: 0.68rem; font-weight: 700;
+    color: #0b0e14;
+  }
+  .canal.r { background: #ff7a7a; }
+  .canal.g { background: #6fe39a; }
+  .canal.b { background: #7aa6ff; }
+
+  #bloques-mascaras { display: flex; flex-direction: column; gap: 8px; }
+  .mascara {
+    background: #161c28;
+    border: 1px solid #2c3648;
+    border-radius: 10px;
+    padding: 8px 9px;
+  }
+  .mascara .cabecera-mascara {
+    display: flex; align-items: center; gap: 7px;
+    cursor: pointer; user-select: none;
+    font-size: 0.92rem;
+  }
+  .mascara .cabecera-mascara input[type="checkbox"] { width: 15px; height: 15px; accent-color: #5b8cff; }
+  .mascara .cuerpo-mascara { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+  .mascara.inactiva .cuerpo-mascara { opacity: 0.4; pointer-events: none; }
+
+  .visores-mascaras { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 8px; }
+  .visores-mascaras h3 { display: flex; align-items: center; gap: 5px; }
+  .visores-mascaras .marco { height: 112px; }
+  @media (max-width: 560px) { .visores-mascaras { grid-template-columns: repeat(2, 1fr); } }
+
   /* Visores */
   .visores { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   @media (max-width: 560px) { .visores { grid-template-columns: 1fr; } }
@@ -249,32 +282,10 @@
         </div>
       </div>
 
-      <div class="tarjeta" id="tarjeta-ajustes">
-        <label class="cabecera">
-          <input type="checkbox" id="chk-ajustes">
-          <span class="paso">2</span><strong>Ajustes / Máscaras</strong>
-        </label>
-        <div class="cuerpo">
-          <div class="fila"><label style="width:72px">Brillo</label><input type="range" id="sl-brillo" min="-100" max="100" value="0"><output id="out-brillo">0</output></div>
-          <div class="fila"><label style="width:72px">Contraste</label><input type="range" id="sl-contraste" min="-100" max="100" value="0"><output id="out-contraste">0</output></div>
-          <div class="fila"><label style="width:72px">Saturación</label><input type="range" id="sl-saturacion" min="-100" max="100" value="0"><output id="out-saturacion">0</output></div>
-          <div class="fila">
-            <label><input type="checkbox" id="chk-grises"> Escala de grises</label>
-            <label><input type="checkbox" id="chk-invertir"> Invertir</label>
-          </div>
-          <div class="fila">
-            <label><input type="checkbox" id="chk-umbral"> Umbral</label>
-            <input type="range" id="sl-umbral" min="0" max="255" value="128"><output id="out-umbral">128</output>
-          </div>
-          <div class="nota">Para máscaras metallic/emissive: sube contraste y activa grises o umbral. Este paso se aplica antes que la paleta.</div>
-          <div class="fila"><button class="boton" id="btn-reset-ajustes">Restablecer ajustes</button></div>
-        </div>
-      </div>
-
       <div class="tarjeta" id="tarjeta-paleta">
         <label class="cabecera">
           <input type="checkbox" id="chk-paleta" checked>
-          <span class="paso">3</span><strong>RePalette</strong>
+          <span class="paso">2</span><strong>RePalette</strong>
         </label>
         <div class="cuerpo">
           <div class="fila">
@@ -305,6 +316,18 @@
           </div>
         </div>
       </div>
+
+      <div class="tarjeta" id="tarjeta-mascaras">
+        <label class="cabecera">
+          <input type="checkbox" id="chk-mascaras">
+          <span class="paso">3</span><strong>Máscaras RGB</strong>
+        </label>
+        <div class="cuerpo">
+          <div class="nota">Una sola textura para el shader: <b>R</b> metallic, <b>G</b> smoothness, <b>B</b> emisivo. Cada canal tiene sus ajustes y se calcula sobre el resultado con la paleta ya aplicada.</div>
+          <div id="bloques-mascaras"></div>
+          <div class="fila"><button class="boton" id="btn-reset-mascaras">Restablecer máscaras</button></div>
+        </div>
+      </div>
     </div>
 
     <!-- ==================== Columna derecha: vista previa + descarga ==================== -->
@@ -324,10 +347,38 @@
         </div>
       </div>
 
+      <div class="tarjeta" id="vista-mascaras" style="margin-top:12px">
+        <div class="fila">
+          <strong>Textura de máscaras</strong>
+          <span class="nota">R metallic · G smoothness · B emisivo</span>
+        </div>
+        <div class="visores-mascaras">
+          <div class="visor">
+            <h3><span class="canal r">R</span> Metallic</h3>
+            <div class="marco"><canvas id="canvas-m-metallic"></canvas></div>
+          </div>
+          <div class="visor">
+            <h3><span class="canal g">G</span> Smoothness</h3>
+            <div class="marco"><canvas id="canvas-m-smoothness"></canvas></div>
+          </div>
+          <div class="visor">
+            <h3><span class="canal b">B</span> Emisivo</h3>
+            <div class="marco"><canvas id="canvas-m-emisivo"></canvas></div>
+          </div>
+          <div class="visor">
+            <h3>Mezcla</h3>
+            <div class="marco"><canvas id="canvas-mezcla"></canvas></div>
+          </div>
+        </div>
+        <div class="info" id="info-mascaras"></div>
+      </div>
+
       <div class="tarjeta" style="margin-top:12px">
         <div class="fila">
-          <label>Sufijo de salida</label>
-          <input type="text" id="in-sufijo" value="_rp" style="flex:0 0 auto;width:110px" spellcheck="false">
+          <label>Sufijo</label>
+          <input type="text" id="in-sufijo" value="_rp" style="flex:0 0 auto;width:84px" spellcheck="false">
+          <label id="etiqueta-sufijo-mascara">Máscaras</label>
+          <input type="text" id="in-sufijo-mascara" value="_mask" style="flex:0 0 auto;width:84px" spellcheck="false">
           <span style="flex:1"></span>
           <button class="boton primario" id="btn-descargar" disabled>Descargar esta</button>
           <button class="boton primario" id="btn-descargar-zip" disabled>Descargar todas (ZIP)</button>
@@ -348,7 +399,7 @@
    ⚠️ Subir VERSION en cada despliegue: se muestra en la esquina
    de estado para verificar qué versión corre el dispositivo.
    ============================================================ */
-const VERSION = "v2026-08-20a";
+const VERSION = "v2026-08-20b";
 const MANTENER_PANTALLA = false;
 const PANTALLA_COMPLETA = false;
 
@@ -574,40 +625,67 @@ function redimensionarVecino(img, anchoD, altoD) {
 /* --- Ajustes: brillo/contraste/saturación + grises/invertir/umbral ---
    ajustes: { brillo: -100..100, contraste: -100..100, saturacion: -100..100,
               grises: bool, invertir: bool, umbral: null | 0..255 } */
-function aplicarAjustes(img, ajustes) {
-  const { ancho, alto } = img;
-  const salida = new Uint8ClampedArray(img.datos);
-  const desplBrillo = (ajustes.brillo || 0) * 2.55;
-  const c = (ajustes.contraste || 0) * 2.55;
-  const fContraste = (259 * (c + 255)) / (255 * (259 - c));
-  const fSat = 1 + (ajustes.saturacion || 0) / 100;
-  const conUmbral = ajustes.umbral !== null && ajustes.umbral !== undefined;
-  for (let p = 0; p < salida.length; p += 4) {
-    let r = salida[p], g = salida[p + 1], b = salida[p + 2];
-    if (fSat !== 1) {
-      const luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-      r = luma + (r - luma) * fSat;
-      g = luma + (g - luma) * fSat;
-      b = luma + (b - luma) * fSat;
-    }
-    r += desplBrillo; g += desplBrillo; b += desplBrillo;
-    r = fContraste * (r - 128) + 128;
-    g = fContraste * (g - 128) + 128;
-    b = fContraste * (b - 128) + 128;
-    if (ajustes.grises) {
-      const luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-      r = g = b = luma;
-    }
-    if (ajustes.invertir) { r = 255 - r; g = 255 - g; b = 255 - b; }
-    if (conUmbral) {
-      const luma = 0.2126 * limitar(r, 0, 255) + 0.7152 * limitar(g, 0, 255) + 0.0722 * limitar(b, 0, 255);
-      r = g = b = luma >= ajustes.umbral ? 255 : 0;
-    }
-    salida[p] = limitar(Math.round(r), 0, 255);
-    salida[p + 1] = limitar(Math.round(g), 0, 255);
-    salida[p + 2] = limitar(Math.round(b), 0, 255);
+/* --- Máscaras: la textura RGB para el shader (R metallic, G smoothness, B emisivo) ---
+   Cada canal se calcula por separado a partir de la imagen final y sus propios
+   ajustes, y se combina al final. Son grises: un solo valor 0-255 por píxel. */
+
+/* Valor 0-255 del que parte la máscara, según la fuente elegida. */
+function valorFuente(r, g, b, fuente) {
+  switch (fuente) {
+    case "rojo": return r;
+    case "verde": return g;
+    case "azul": return b;
+    case "maximo": return Math.max(r, g, b);
+    case "saturacion": return Math.max(r, g, b) - Math.min(r, g, b);
+    default: return 0.2126 * r + 0.7152 * g + 0.0722 * b; // luminancia
   }
-  return { ancho, alto, datos: salida };
+}
+
+/* Calcula un canal de máscara. Devuelve ancho*alto valores (uno por píxel).
+   Si la máscara está desactivada el canal queda a 0 (negro). */
+function calcularMascara(img, aj) {
+  const n = img.ancho * img.alto;
+  const canal = new Uint8ClampedArray(n);
+  if (!aj || aj.activa === false) return canal;
+  const desplBrillo = (aj.brillo || 0) * 2.55;
+  const c = (aj.contraste || 0) * 2.55;
+  const fContraste = (259 * (c + 255)) / (255 * (259 - c));
+  const conUmbral = aj.umbral !== null && aj.umbral !== undefined;
+  for (let i = 0, p = 0; i < n; i++, p += 4) {
+    let v = valorFuente(img.datos[p], img.datos[p + 1], img.datos[p + 2], aj.fuente);
+    v += desplBrillo;
+    v = fContraste * (v - 128) + 128;
+    if (aj.invertir) v = 255 - v;
+    v = limitar(v, 0, 255);
+    if (conUmbral) v = v >= aj.umbral ? 255 : 0;
+    canal[i] = Math.round(v);
+  }
+  return canal;
+}
+
+/* Combina los tres canales en la textura RGB final.
+   El alfa se hereda de la imagen para conservar la silueta del sprite. */
+function combinarMascaras(img, canalR, canalG, canalB) {
+  const n = img.ancho * img.alto;
+  const datos = new Uint8ClampedArray(n * 4);
+  for (let i = 0, p = 0; i < n; i++, p += 4) {
+    datos[p] = canalR[i];
+    datos[p + 1] = canalG[i];
+    datos[p + 2] = canalB[i];
+    datos[p + 3] = img.datos[p + 3];
+  }
+  return { ancho: img.ancho, alto: img.alto, datos };
+}
+
+/* Un canal suelto como imagen en grises (para la vista previa de cada máscara). */
+function canalAImagen(img, canal) {
+  const n = img.ancho * img.alto;
+  const datos = new Uint8ClampedArray(n * 4);
+  for (let i = 0, p = 0; i < n; i++, p += 4) {
+    datos[p] = datos[p + 1] = datos[p + 2] = canal[i];
+    datos[p + 3] = img.datos[p + 3];
+  }
+  return { ancho: img.ancho, alto: img.alto, datos };
 }
 
 /* --- ZIP sin compresión (método "store"): suficiente para PNGs, sin dependencias --- */
@@ -862,25 +940,75 @@ $("in-paleta").addEventListener("keydown", (e) => { if (e.key === "Enter") carga
 /* ============================================================
    Proceso: ReSize → Ajustes → RePalette
    ============================================================ */
+/* ============================================================
+   Máscaras: los tres canales de la textura RGB
+   ============================================================ */
+const CANALES = [
+  { clave: "metallic",   canal: "r", etiqueta: "Metallic" },
+  { clave: "smoothness", canal: "g", etiqueta: "Smoothness" },
+  { clave: "emisivo",    canal: "b", etiqueta: "Emisivo" },
+];
+
+const FUENTES = [
+  ["luminancia", "Luminancia"],
+  ["maximo", "Valor máximo (RGB)"],
+  ["saturacion", "Saturación"],
+  ["rojo", "Canal rojo"],
+  ["verde", "Canal verde"],
+  ["azul", "Canal azul"],
+];
+
+/* Los tres bloques de ajustes son iguales salvo el canal, así que se generan
+   aquí en lugar de repetir el mismo HTML tres veces. */
+(function construirBloquesMascaras() {
+  $("bloques-mascaras").innerHTML = CANALES.map((c) => `
+    <div class="mascara" id="mascara-${c.clave}">
+      <label class="cabecera-mascara">
+        <input type="checkbox" id="chk-${c.clave}" checked>
+        <span class="canal ${c.canal}">${c.canal.toUpperCase()}</span><strong>${c.etiqueta}</strong>
+      </label>
+      <div class="cuerpo-mascara">
+        <div class="fila">
+          <label style="width:72px">Fuente</label>
+          <select id="sel-${c.clave}-fuente">${FUENTES.map(([v, n]) => `<option value="${v}">${n}</option>`).join("")}</select>
+        </div>
+        <div class="fila"><label style="width:72px">Brillo</label><input type="range" id="sl-${c.clave}-brillo" min="-100" max="100" value="0"><output id="out-${c.clave}-brillo">0</output></div>
+        <div class="fila"><label style="width:72px">Contraste</label><input type="range" id="sl-${c.clave}-contraste" min="-100" max="100" value="0"><output id="out-${c.clave}-contraste">0</output></div>
+        <div class="fila"><label><input type="checkbox" id="chk-${c.clave}-invertir"> Invertir</label></div>
+        <div class="fila">
+          <label><input type="checkbox" id="chk-${c.clave}-umbral"> Umbral</label>
+          <input type="range" id="sl-${c.clave}-umbral" min="0" max="255" value="128"><output id="out-${c.clave}-umbral">128</output>
+        </div>
+      </div>
+    </div>`).join("");
+})();
+
 function leerOpciones() {
+  const canales = {};
+  for (const c of CANALES) {
+    canales[c.clave] = {
+      activa: $("chk-" + c.clave).checked,
+      fuente: $("sel-" + c.clave + "-fuente").value,
+      brillo: parseInt($("sl-" + c.clave + "-brillo").value, 10),
+      contraste: parseInt($("sl-" + c.clave + "-contraste").value, 10),
+      invertir: $("chk-" + c.clave + "-invertir").checked,
+      umbral: $("chk-" + c.clave + "-umbral").checked ? parseInt($("sl-" + c.clave + "-umbral").value, 10) : null,
+    };
+  }
   return {
     resize: $("chk-resize").checked,
     ancho: limitar(parseInt($("in-ancho").value, 10) || 64, 1, 4096),
     alto: limitar(parseInt($("in-alto").value, 10) || 64, 1, 4096),
     proporcion: $("chk-proporcion").checked,
     metodoResize: $("sel-metodo-resize").value,
-    ajustes: $("chk-ajustes").checked,
-    brillo: parseInt($("sl-brillo").value, 10),
-    contraste: parseInt($("sl-contraste").value, 10),
-    saturacion: parseInt($("sl-saturacion").value, 10),
-    grises: $("chk-grises").checked,
-    invertir: $("chk-invertir").checked,
-    umbral: $("chk-umbral").checked ? parseInt($("sl-umbral").value, 10) : null,
     repalette: $("chk-paleta").checked,
     metrica: $("sel-metrica").value,
     dithering: $("sel-dither").value,
     intensidad: parseInt($("sl-intensidad").value, 10),
+    mascaras: $("chk-mascaras").checked,
+    canales,
     sufijo: $("in-sufijo").value,
+    sufijoMascara: $("in-sufijo-mascara").value,
   };
 }
 
@@ -892,18 +1020,23 @@ function procesar(original, op) {
       img = op.metodoResize === "vecino" ? redimensionarVecino(img, w, h) : redimensionarArea(img, w, h);
     }
   }
-  if (op.ajustes) {
-    img = aplicarAjustes(img, {
-      brillo: op.brillo, contraste: op.contraste, saturacion: op.saturacion,
-      grises: op.grises, invertir: op.invertir, umbral: op.umbral,
-    });
-  }
   if (op.repalette && paleta) {
     img = aplicarPaleta(img, paleta.colores, {
       metrica: op.metrica, dithering: op.dithering, intensidad: op.intensidad,
     });
   }
   return img;
+}
+
+/* Las máscaras se calculan sobre el resultado final (con la paleta ya aplicada)
+   y son una rama aparte: no tocan la imagen de color. */
+function procesarMascaras(resultado, op) {
+  const canales = {};
+  for (const c of CANALES) canales[c.clave] = calcularMascara(resultado, op.canales[c.clave]);
+  return {
+    canales,
+    mezcla: combinarMascaras(resultado, canales.metallic, canales.smoothness, canales.emisivo),
+  };
 }
 
 /* ============================================================
@@ -931,20 +1064,30 @@ function refrescarAhora() {
   const hay = indiceActivo >= 0 && !!imagenes[indiceActivo];
   $("btn-descargar").disabled = !hay;
   $("btn-descargar-zip").disabled = imagenes.length === 0;
-  for (const id of ["brillo", "contraste", "saturacion", "umbral", "intensidad"]) {
-    $("out-" + id).textContent = $("sl-" + id).value;
+  $("out-intensidad").textContent = $("sl-intensidad").value;
+  for (const c of CANALES) {
+    for (const campo of ["brillo", "contraste", "umbral"]) {
+      $("out-" + c.clave + "-" + campo).textContent = $("sl-" + c.clave + "-" + campo).value;
+    }
+    $("mascara-" + c.clave).classList.toggle("inactiva", !$("chk-" + c.clave).checked);
   }
-  for (const [tarjeta, chk] of [["tarjeta-resize", "chk-resize"], ["tarjeta-ajustes", "chk-ajustes"], ["tarjeta-paleta", "chk-paleta"]]) {
+  for (const [tarjeta, chk] of [["tarjeta-resize", "chk-resize"], ["tarjeta-paleta", "chk-paleta"], ["tarjeta-mascaras", "chk-mascaras"]]) {
     $(tarjeta).classList.toggle("inactiva", !$(chk).checked);
   }
+  const verMascaras = $("chk-mascaras").checked;
+  $("vista-mascaras").style.display = verMascaras ? "" : "none";
+  $("in-sufijo-mascara").style.display = $("etiqueta-sufijo-mascara").style.display = verMascaras ? "" : "none";
   const op = leerOpciones();
   config.opciones = op;
   guardarConfig();
   if (!hay) {
-    $("canvas-original").width = $("canvas-original").height = 0;
-    $("canvas-resultado").width = $("canvas-resultado").height = 0;
+    for (const id of ["original", "resultado", "mezcla", ...CANALES.map((c) => "m-" + c.clave)]) {
+      const lienzo = $("canvas-" + id);
+      lienzo.width = lienzo.height = 0;
+    }
     $("info-original").textContent = "";
     $("info-resultado").textContent = "";
+    $("info-mascaras").textContent = "";
     return;
   }
   const item = imagenes[indiceActivo];
@@ -954,6 +1097,15 @@ function refrescarAhora() {
   dibujar($("canvas-resultado"), resultado);
   const conPaleta = op.repalette && paleta ? ` — ${paleta.colores.length} colores` : "";
   $("info-resultado").textContent = `${nombreSalida(item.nombre, op.sufijo)} — ${resultado.ancho}×${resultado.alto}${conPaleta}`;
+
+  if (verMascaras) {
+    const m = procesarMascaras(resultado, op);
+    for (const c of CANALES) dibujar($("canvas-m-" + c.clave), canalAImagen(resultado, m.canales[c.clave]));
+    dibujar($("canvas-mezcla"), m.mezcla);
+    const apagados = CANALES.filter((c) => !op.canales[c.clave].activa).map((c) => c.etiqueta);
+    $("info-mascaras").textContent = nombreSalida(item.nombre, op.sufijoMascara) +
+      (apagados.length ? ` — a negro: ${apagados.join(", ")}` : "");
+  }
 }
 
 /* Cualquier cambio en los controles reprocesa la vista previa */
@@ -962,10 +1114,16 @@ document.querySelectorAll("input, select").forEach((el) => {
   el.addEventListener("change", refrescar);
 });
 
-$("btn-reset-ajustes").addEventListener("click", () => {
-  $("sl-brillo").value = 0; $("sl-contraste").value = 0; $("sl-saturacion").value = 0;
-  $("chk-grises").checked = false; $("chk-invertir").checked = false;
-  $("chk-umbral").checked = false; $("sl-umbral").value = 128;
+$("btn-reset-mascaras").addEventListener("click", () => {
+  for (const c of CANALES) {
+    $("chk-" + c.clave).checked = true;
+    $("sel-" + c.clave + "-fuente").value = "luminancia";
+    $("sl-" + c.clave + "-brillo").value = 0;
+    $("sl-" + c.clave + "-contraste").value = 0;
+    $("chk-" + c.clave + "-invertir").checked = false;
+    $("chk-" + c.clave + "-umbral").checked = false;
+    $("sl-" + c.clave + "-umbral").value = 128;
+  }
   refrescar();
 });
 
@@ -993,12 +1151,27 @@ function descargarBlob(blob, nombre) {
   setTimeout(() => URL.revokeObjectURL(a.href), 5000);
 }
 
+/* Ficheros que salen de una imagen: el diffuse y, si están activas,
+   la textura RGB de máscaras. */
+function salidasDe(item, op) {
+  const resultado = procesar(item.original, op);
+  const salidas = [{ nombre: nombreSalida(item.nombre, op.sufijo), img: resultado }];
+  if (op.mascaras) {
+    salidas.push({
+      nombre: nombreSalida(item.nombre, op.sufijoMascara),
+      img: procesarMascaras(resultado, op).mezcla,
+    });
+  }
+  return salidas;
+}
+
 $("btn-descargar").addEventListener("click", async () => {
   const item = imagenes[indiceActivo];
   if (!item) return;
   const op = leerOpciones();
-  const blob = await imagenAPngBlob(procesar(item.original, op));
-  descargarBlob(blob, nombreSalida(item.nombre, op.sufijo));
+  for (const salida of salidasDe(item, op)) {
+    descargarBlob(await imagenAPngBlob(salida.img), salida.nombre);
+  }
 });
 
 $("btn-descargar-zip").addEventListener("click", async () => {
@@ -1012,12 +1185,14 @@ $("btn-descargar-zip").addEventListener("click", async () => {
   try {
     for (let i = 0; i < imagenes.length; i++) {
       boton.textContent = `Procesando ${i + 1}/${imagenes.length}…`;
-      const blob = await imagenAPngBlob(procesar(imagenes[i].original, op));
-      let nombre = nombreSalida(imagenes[i].nombre, op.sufijo);
-      const veces = (usados.get(nombre) || 0) + 1;
-      usados.set(nombre, veces);
-      if (veces > 1) nombre = nombre.replace(/\.png$/, `_${veces}.png`);
-      archivos.push({ nombre, datos: new Uint8Array(await blob.arrayBuffer()) });
+      for (const salida of salidasDe(imagenes[i], op)) {
+        const blob = await imagenAPngBlob(salida.img);
+        let nombre = salida.nombre;
+        const veces = (usados.get(nombre) || 0) + 1;
+        usados.set(nombre, veces);
+        if (veces > 1) nombre = nombre.replace(/\.png$/, `_${veces}.png`);
+        archivos.push({ nombre, datos: new Uint8Array(await blob.arrayBuffer()) });
+      }
     }
     const zip = crearZip(archivos);
     descargarBlob(new Blob([zip], { type: "application/zip" }), "repixel.zip");
@@ -1038,19 +1213,24 @@ $("btn-descargar-zip").addEventListener("click", async () => {
     $("in-alto").value = op.alto || 64;
     $("chk-proporcion").checked = op.proporcion !== false;
     $("sel-metodo-resize").value = op.metodoResize || "area";
-    $("chk-ajustes").checked = !!op.ajustes;
-    $("sl-brillo").value = op.brillo || 0;
-    $("sl-contraste").value = op.contraste || 0;
-    $("sl-saturacion").value = op.saturacion || 0;
-    $("chk-grises").checked = !!op.grises;
-    $("chk-invertir").checked = !!op.invertir;
-    $("chk-umbral").checked = op.umbral !== null && op.umbral !== undefined;
-    if (op.umbral !== null && op.umbral !== undefined) $("sl-umbral").value = op.umbral;
     $("chk-paleta").checked = op.repalette !== false;
     $("sel-metrica").value = op.metrica || "oklab";
     $("sel-dither").value = op.dithering || "ninguno";
     $("sl-intensidad").value = op.intensidad === undefined ? 100 : op.intensidad;
     $("in-sufijo").value = op.sufijo === undefined ? "_rp" : op.sufijo;
+    $("chk-mascaras").checked = !!op.mascaras;
+    $("in-sufijo-mascara").value = op.sufijoMascara === undefined ? "_mask" : op.sufijoMascara;
+    for (const c of CANALES) {
+      const m = op.canales && op.canales[c.clave];
+      if (!m) continue;
+      $("chk-" + c.clave).checked = m.activa !== false;
+      $("sel-" + c.clave + "-fuente").value = m.fuente || "luminancia";
+      $("sl-" + c.clave + "-brillo").value = m.brillo || 0;
+      $("sl-" + c.clave + "-contraste").value = m.contraste || 0;
+      $("chk-" + c.clave + "-invertir").checked = !!m.invertir;
+      $("chk-" + c.clave + "-umbral").checked = m.umbral !== null && m.umbral !== undefined;
+      if (m.umbral !== null && m.umbral !== undefined) $("sl-" + c.clave + "-umbral").value = m.umbral;
+    }
   }
   if (config.paletaEntrada) $("in-paleta").value = config.paletaEntrada;
   pintarRecientes();

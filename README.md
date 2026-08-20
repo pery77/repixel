@@ -3,10 +3,10 @@
 Herramienta web (PWA, un solo `index.html` sin dependencias) para preparar assets de un juego pixel art. Carga una imagen o una carpeta entera y aplica un pipeline de tres pasos opcionales:
 
 1. **ReSize** — reduce al tamaño elegido (por defecto 64×64). Métodos: promedio de área (cobertura fraccionaria y ponderado por alfa, el mejor para reducir fotos/renders) o vecino más cercano (para pixel art ya limpio).
-2. **Ajustes / Máscaras** — brillo, contraste, saturación, escala de grises, invertir y umbral. Pensado para generar máscaras metallic/emissive a partir del sprite.
-3. **RePalette** — reduce los colores a una paleta de [Lospec](https://lospec.com/palette-list): pega la URL (o el slug, o directamente códigos hex). Distancia de color perceptual **OKLab** (o RGB ponderado), dithering **Floyd–Steinberg** o **Bayer 8×8** con intensidad regulable.
+2. **RePalette** — reduce los colores a una paleta de [Lospec](https://lospec.com/palette-list): pega la URL (o el slug, o directamente códigos hex). Distancia de color perceptual **OKLab** (o RGB ponderado), dithering **Floyd–Steinberg** o **Bayer 8×8** con intensidad regulable.
+3. **Máscaras RGB** — genera *una sola textura* para el shader con una máscara codificada en cada canal: **R** metallic, **G** smoothness, **B** emisivo. Cada canal tiene sus propios ajustes (fuente, brillo, contraste, invertir, umbral), se calcula sobre el resultado ya palettizado y se previsualiza en grises debajo de la vista principal. Es una rama aparte: no toca la imagen de color.
 
-La vista previa (original / resultado) se actualiza en vivo. Descarga el PNG de la imagen activa o un **ZIP con todas** (escritor ZIP propio, sin dependencias). Todo se procesa en local: nada sale del navegador (salvo la descarga de la paleta desde Lospec).
+La vista previa (original / resultado, más los cuatro visores de máscaras) se actualiza en vivo. Descarga el PNG de la imagen activa o un **ZIP con todas** — con las máscaras activas cada imagen saca dos ficheros, `nombre_rp.png` y `nombre_mask.png` (sufijos configurables) (escritor ZIP propio, sin dependencias). Todo se procesa en local: nada sale del navegador (salvo la descarga de la paleta desde Lospec).
 
 ## Cómo ejecutar
 
@@ -18,7 +18,7 @@ La vista previa (original / resultado) se actualiza en vivo. Descarga el PNG de 
 
 ## Tests
 
-Lógica pura (parsing de paletas, OKLab, dithering, reescalado, ajustes, CRC32/ZIP) testeada en Node sin frameworks:
+Lógica pura (parsing de paletas, OKLab, dithering, reescalado, máscaras, CRC32/ZIP) testeada en Node sin frameworks:
 
 ```
 node pruebas.mjs
