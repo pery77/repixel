@@ -12,16 +12,21 @@
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
   html, body {
-    min-height: 100%;
+    height: 100%;
     background: #10141c;
     color: #e8ecf4;
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   }
 
+  /* La página en sí no scrollea: quien scrollea es la columna de herramientas. */
+  body { overflow: hidden; }
+
   #app {
+    height: 100vh;
+    height: 100dvh;
     max-width: 1150px;
     margin: 0 auto;
-    padding: 16px 16px 40px;
+    padding: 16px 16px 12px;
     display: flex;
     flex-direction: column;
     gap: 14px;
@@ -31,12 +36,38 @@
   header p  { color: #8b96ad; font-size: 0.9rem; margin-top: 2px; }
 
   .columnas {
+    flex: 1;
+    min-height: 0;   /* imprescindible: sin esto la rejilla crece y no hay scroll interno */
     display: grid;
     grid-template-columns: 360px 1fr;
     gap: 14px;
-    align-items: start;
+    align-items: stretch;
   }
-  @media (max-width: 860px) { .columnas { grid-template-columns: 1fr; } }
+
+  /* Cada columna scrollea por su cuenta: mover las herramientas no mueve la vista previa. */
+  .columna-herramientas, .columna-vista { min-height: 0; overflow-y: auto; }
+  .columna-herramientas {
+    padding-right: 8px;              /* aire para la barra de scroll */
+    overscroll-behavior: contain;    /* al llegar al final no arrastra la página */
+    scrollbar-width: thin;
+    scrollbar-color: #2c3648 transparent;
+  }
+  .columna-herramientas::-webkit-scrollbar { width: 10px; }
+  .columna-herramientas::-webkit-scrollbar-track { background: transparent; }
+  .columna-herramientas::-webkit-scrollbar-thumb {
+    background: #2c3648;
+    border-radius: 6px;
+    border: 2px solid #10141c;
+  }
+  .columna-herramientas::-webkit-scrollbar-thumb:hover { background: #3a4866; }
+
+  /* En pantalla estrecha las columnas se apilan y vuelve el scroll normal de página. */
+  @media (max-width: 860px) {
+    body { overflow: auto; }
+    #app { height: auto; padding-bottom: 40px; }
+    .columnas { grid-template-columns: 1fr; }
+    .columna-herramientas, .columna-vista { overflow: visible; padding-right: 0; }
+  }
 
   .tarjeta {
     background: #1b2230;
@@ -178,7 +209,7 @@
 
   <div class="columnas">
     <!-- ==================== Columna izquierda: carga + herramientas ==================== -->
-    <div>
+    <div class="columna-herramientas">
       <div class="tarjeta">
         <div class="cabecera"><strong>Imágenes</strong></div>
         <div class="cuerpo">
@@ -277,7 +308,7 @@
     </div>
 
     <!-- ==================== Columna derecha: vista previa + descarga ==================== -->
-    <div>
+    <div class="columna-vista">
       <div class="tarjeta">
         <div class="visores">
           <div class="visor">
@@ -317,7 +348,7 @@
    ⚠️ Subir VERSION en cada despliegue: se muestra en la esquina
    de estado para verificar qué versión corre el dispositivo.
    ============================================================ */
-const VERSION = "v2026-08-19a";
+const VERSION = "v2026-08-20a";
 const MANTENER_PANTALLA = false;
 const PANTALLA_COMPLETA = false;
 
