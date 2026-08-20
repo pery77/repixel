@@ -24,9 +24,7 @@ Lógica pura (parsing de paletas, OKLab, dithering, reescalado, ajustes, CRC32/Z
 node pruebas.mjs
 ```
 
-## Desplegar en GitHub Pages
-
-En GitHub: Settings → Pages → Deploy from branch → `main` / root. El `.nojekyll` ya está incluido.
+## Versión
 
 **⚠️ Sube `VERSION`** (inicio del script de `index.html`) en cada despliegue: se muestra en la esquina inferior derecha y es la forma rápida de saber qué versión corre el dispositivo.
 
