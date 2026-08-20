@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Generador de iconos PWA</title>
+<style>
+  body { background: #10141c; color: #e8ecf4; font-family: system-ui, sans-serif;
+         display: grid; place-items: center; min-height: 100vh; margin: 0; }
+  .panel { text-align: center; }
+  input { font-size: 2rem; width: 5ch; text-align: center; background: #1b2230;
+          color: #e8ecf4; border: 3px solid #2c3648; border-radius: 12px; padding: 8px; }
+  input[type="color"] { width: 64px; height: 56px; padding: 2px; vertical-align: middle; }
+  button { font-size: 1.2rem; font-weight: 700; padding: 12px 24px; margin-top: 16px;
+           background: #173322; color: #e8ecf4; border: 3px solid #2f6647;
+           border-radius: 12px; cursor: pointer; }
+  canvas { border-radius: 24px; margin: 16px; }
+</style>
+</head>
+<body>
+<div class="panel">
+  <h1>Generador de iconos PWA</h1>
+  <p>
+    <input id="texto" value="🛠️" maxlength="4">
+    fondo <input type="color" id="fondo" value="#10141c">
+    tinta <input type="color" id="tinta" value="#4dd47a">
+  </p>
+  <canvas id="lienzo" width="192" height="192"></canvas>
+  <br>
+  <button id="descargar">Descargar icon-192.png + icon-512.png</button>
+  <p style="color:#55617a">Un emoji o 1-2 letras. Guarda los dos PNG junto al index.html.</p>
+</div>
+
+<script>
+"use strict";
+function dibujar(canvas, s) {
+  canvas.width = s; canvas.height = s;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = document.getElementById("fondo").value;
+  ctx.fillRect(0, 0, s, s);
+  ctx.fillStyle = document.getElementById("tinta").value;
+  ctx.font = "bold " + (s * 0.55) + "px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  // El +5% baja el texto un pelín: los emoji suelen quedar altos
+  ctx.fillText(document.getElementById("texto").value.trim(), s / 2, s / 2 + s * 0.05);
+}
+
+function refrescar() { dibujar(document.getElementById("lienzo"), 192); }
+document.querySelectorAll("input").forEach((i) => i.addEventListener("input", refrescar));
+refrescar();
+
+document.getElementById("descargar").addEventListener("click", () => {
+  for (const s of [192, 512]) {
+    const c = document.createElement("canvas");
+    dibujar(c, s);
+    const a = document.createElement("a");
+    a.download = "icon-" + s + ".png";
+    a.href = c.toDataURL("image/png");
+    a.click();
+  }
+});
+</script>
+</body>
+</html>

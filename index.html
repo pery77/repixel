@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#10141c">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>RePixel</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    min-height: 100%;
+    background: #10141c;
+    color: #e8ecf4;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+
+  #app {
+    max-width: 1150px;
+    margin: 0 auto;
+    padding: 16px 16px 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  header h1 { font-size: 1.5rem; letter-spacing: 0.5px; }
+  header p  { color: #8b96ad; font-size: 0.9rem; margin-top: 2px; }
+
+  .columnas {
+    display: grid;
+    grid-template-columns: 360px 1fr;
+    gap: 14px;
+    align-items: start;
+  }
+  @media (max-width: 860px) { .columnas { grid-template-columns: 1fr; } }
+
+  .tarjeta {
+    background: #1b2230;
+    border: 1px solid #2c3648;
+    border-radius: 12px;
+    padding: 12px;
+  }
+  .tarjeta + .tarjeta { margin-top: 12px; }
+
+  .tarjeta > .cabecera {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .cabecera strong { font-size: 1.02rem; }
+  .cabecera .paso {
+    background: #26304a;
+    color: #9fb0d0;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    padding: 2px 6px;
+    font-weight: 700;
+  }
+  .cabecera input[type="checkbox"] { width: 17px; height: 17px; accent-color: #5b8cff; }
+
+  .tarjeta .cuerpo { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+  .tarjeta.inactiva .cuerpo { opacity: 0.4; pointer-events: none; }
+
+  .fila { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .fila label { color: #b7c1d6; font-size: 0.86rem; }
+  .fila output { color: #e8ecf4; font-size: 0.86rem; min-width: 34px; text-align: right; }
+  .nota { font-size: 0.78rem; color: #55617a; }
+
+  input[type="text"], input[type="number"], select {
+    background: #10141c;
+    border: 1px solid #2c3648;
+    border-radius: 8px;
+    color: #e8ecf4;
+    padding: 6px 8px;
+    font-size: 0.9rem;
+  }
+  input[type="number"] { width: 70px; }
+  input[type="text"] { flex: 1; min-width: 120px; }
+  input[type="range"] { flex: 1; accent-color: #5b8cff; min-width: 90px; }
+  input[type="checkbox"] { accent-color: #5b8cff; }
+
+  .boton {
+    border: 1px solid #2c3648;
+    border-radius: 8px;
+    background: #26304a;
+    color: #e8ecf4;
+    font-weight: 600;
+    font-size: 0.9rem;
+    padding: 7px 14px;
+    cursor: pointer;
+    transition: transform 0.07s ease-out;
+  }
+  .boton:active { transform: scale(0.96); }
+  .boton:disabled { opacity: 0.4; cursor: default; }
+  .boton.primario { background: #3b5bd6; border-color: #4a6ae8; }
+
+  /* Zona de carga */
+  #zona-soltar {
+    border: 2px dashed #3a4866;
+    border-radius: 10px;
+    padding: 18px 12px;
+    text-align: center;
+    color: #8b96ad;
+    font-size: 0.9rem;
+    cursor: pointer;
+  }
+  #zona-soltar.encima { border-color: #5b8cff; color: #cfe0ff; background: #1e2a44; }
+
+  #lista-miniaturas { display: flex; flex-wrap: wrap; gap: 6px; }
+  #lista-miniaturas:empty { display: none; }
+  .miniatura {
+    width: 52px; height: 52px;
+    border: 2px solid #2c3648;
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    background: repeating-conic-gradient(#242c3d 0% 25%, #1a2130 0% 50%) 0 0 / 12px 12px;
+    display: grid; place-items: center;
+  }
+  .miniatura.activa { border-color: #5b8cff; }
+  .miniatura img { max-width: 100%; max-height: 100%; image-rendering: pixelated; display: block; }
+
+  /* Paleta */
+  #muestras-paleta { display: flex; flex-wrap: wrap; gap: 3px; }
+  #muestras-paleta span {
+    width: 20px; height: 20px;
+    border-radius: 4px;
+    border: 1px solid rgba(255,255,255,0.15);
+  }
+  #nombre-paleta { color: #9fb0d0; font-size: 0.84rem; }
+  #nombre-paleta:empty, #muestras-paleta:empty, #paletas-recientes:empty { display: none; }
+  #paletas-recientes { display: flex; flex-wrap: wrap; gap: 5px; }
+  #paletas-recientes button {
+    background: #10141c; border: 1px solid #2c3648; color: #9fb0d0;
+    border-radius: 6px; padding: 3px 8px; font-size: 0.78rem; cursor: pointer;
+  }
+
+  /* Visores */
+  .visores { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  @media (max-width: 560px) { .visores { grid-template-columns: 1fr; } }
+  .visor h3 { font-size: 0.85rem; color: #8b96ad; font-weight: 600; margin-bottom: 6px; }
+  .visor .marco {
+    height: 300px;
+    border: 1px solid #2c3648;
+    border-radius: 10px;
+    display: grid;
+    place-items: center;
+    overflow: auto;
+    background: repeating-conic-gradient(#242c3d 0% 25%, #1a2130 0% 50%) 0 0 / 16px 16px;
+  }
+  .visor canvas { image-rendering: pixelated; display: block; }
+  .visor .info { color: #55617a; font-size: 0.78rem; margin-top: 4px; min-height: 1em; }
+
+  #aviso { color: #ffb86b; font-size: 0.85rem; min-height: 1.1em; margin-top: 6px; }
+
+  #estado {
+    position: fixed;
+    right: 8px;
+    bottom: 6px;
+    font-size: 0.75rem;
+    color: #55617a;
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <header>
+    <h1>RePixel</h1>
+    <p>Reescala, aplica paletas de Lospec y genera máscaras para tu juego pixel art. Todo se procesa en local.</p>
+  </header>
+
+  <div class="columnas">
+    <!-- ==================== Columna izquierda: carga + herramientas ==================== -->
+    <div>
+      <div class="tarjeta">
+        <div class="cabecera"><strong>Imágenes</strong></div>
+        <div class="cuerpo">
+          <div id="zona-soltar">Arrastra imágenes o carpetas aquí<br>o usa los botones</div>
+          <div class="fila">
+            <button class="boton" id="btn-archivos">Elegir imágenes</button>
+            <button class="boton" id="btn-carpeta">Elegir carpeta</button>
+            <button class="boton" id="btn-limpiar">Vaciar</button>
+          </div>
+          <input type="file" id="input-archivos" accept="image/*" multiple hidden>
+          <input type="file" id="input-carpeta" webkitdirectory hidden>
+          <div id="lista-miniaturas"></div>
+        </div>
+      </div>
+
+      <div class="tarjeta" id="tarjeta-resize">
+        <label class="cabecera">
+          <input type="checkbox" id="chk-resize" checked>
+          <span class="paso">1</span><strong>ReSize</strong>
+        </label>
+        <div class="cuerpo">
+          <div class="fila">
+            <label>Tamaño</label>
+            <input type="number" id="in-ancho" min="1" max="4096" value="64"> ×
+            <input type="number" id="in-alto" min="1" max="4096" value="64"> px
+          </div>
+          <div class="fila">
+            <label><input type="checkbox" id="chk-proporcion" checked> Mantener proporción (encaja dentro)</label>
+          </div>
+          <div class="fila">
+            <label>Método</label>
+            <select id="sel-metodo-resize">
+              <option value="area">Promedio de área (mejor al reducir)</option>
+              <option value="vecino">Vecino más cercano (pixel art limpio)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="tarjeta" id="tarjeta-ajustes">
+        <label class="cabecera">
+          <input type="checkbox" id="chk-ajustes">
+          <span class="paso">2</span><strong>Ajustes / Máscaras</strong>
+        </label>
+        <div class="cuerpo">
+          <div class="fila"><label style="width:72px">Brillo</label><input type="range" id="sl-brillo" min="-100" max="100" value="0"><output id="out-brillo">0</output></div>
+          <div class="fila"><label style="width:72px">Contraste</label><input type="range" id="sl-contraste" min="-100" max="100" value="0"><output id="out-contraste">0</output></div>
+          <div class="fila"><label style="width:72px">Saturación</label><input type="range" id="sl-saturacion" min="-100" max="100" value="0"><output id="out-saturacion">0</output></div>
+          <div class="fila">
+            <label><input type="checkbox" id="chk-grises"> Escala de grises</label>
+            <label><input type="checkbox" id="chk-invertir"> Invertir</label>
+          </div>
+          <div class="fila">
+            <label><input type="checkbox" id="chk-umbral"> Umbral</label>
+            <input type="range" id="sl-umbral" min="0" max="255" value="128"><output id="out-umbral">128</output>
+          </div>
+          <div class="nota">Para máscaras metallic/emissive: sube contraste y activa grises o umbral. Este paso se aplica antes que la paleta.</div>
+          <div class="fila"><button class="boton" id="btn-reset-ajustes">Restablecer ajustes</button></div>
+        </div>
+      </div>
+
+      <div class="tarjeta" id="tarjeta-paleta">
+        <label class="cabecera">
+          <input type="checkbox" id="chk-paleta" checked>
+          <span class="paso">3</span><strong>RePalette</strong>
+        </label>
+        <div class="cuerpo">
+          <div class="fila">
+            <input type="text" id="in-paleta" placeholder="URL de Lospec, slug o códigos hex" spellcheck="false">
+            <button class="boton" id="btn-cargar-paleta">Cargar</button>
+          </div>
+          <div id="paletas-recientes"></div>
+          <div id="nombre-paleta"></div>
+          <div id="muestras-paleta"></div>
+          <div class="fila">
+            <label>Distancia</label>
+            <select id="sel-metrica">
+              <option value="oklab">OKLab (perceptual, recomendado)</option>
+              <option value="rgb">RGB ponderado (rápido)</option>
+            </select>
+          </div>
+          <div class="fila">
+            <label>Dithering</label>
+            <select id="sel-dither">
+              <option value="ninguno">Ninguno</option>
+              <option value="floyd">Floyd–Steinberg</option>
+              <option value="bayer">Bayer 8×8 (ordenado)</option>
+            </select>
+          </div>
+          <div class="fila">
+            <label style="width:72px">Intensidad</label>
+            <input type="range" id="sl-intensidad" min="0" max="100" value="100"><output id="out-intensidad">100</output>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== Columna derecha: vista previa + descarga ==================== -->
+    <div>
+      <div class="tarjeta">
+        <div class="visores">
+          <div class="visor">
+            <h3>Original</h3>
+            <div class="marco"><canvas id="canvas-original"></canvas></div>
+            <div class="info" id="info-original"></div>
+          </div>
+          <div class="visor">
+            <h3>Resultado</h3>
+            <div class="marco"><canvas id="canvas-resultado"></canvas></div>
+            <div class="info" id="info-resultado"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tarjeta" style="margin-top:12px">
+        <div class="fila">
+          <label>Sufijo de salida</label>
+          <input type="text" id="in-sufijo" value="_rp" style="flex:0 0 auto;width:110px" spellcheck="false">
+          <span style="flex:1"></span>
+          <button class="boton primario" id="btn-descargar" disabled>Descargar esta</button>
+          <button class="boton primario" id="btn-descargar-zip" disabled>Descargar todas (ZIP)</button>
+        </div>
+        <div id="aviso"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="estado"></div>
+
+<script>
+"use strict";
+
+/* ============================================================
+   Configuración
+   ⚠️ Subir VERSION en cada despliegue: se muestra en la esquina
+   de estado para verificar qué versión corre el dispositivo.
+   ============================================================ */
+const VERSION = "v2026-08-19a";
+const MANTENER_PANTALLA = false;
+const PANTALLA_COMPLETA = false;
+
+/* ============================================================
+   LÓGICA PURA — INICIO
+   Sin DOM: todo lo de esta sección es testeable en Node con
+   pruebas.mjs (que extrae este bloque por los marcadores).
+   Una "imagen" aquí es { ancho, alto, datos: Uint8ClampedArray } (RGBA).
+   ============================================================ */
+
+function limitar(v, min, max) { return v < min ? min : v > max ? max : v; }
+
+function hexARgb(hex) {
+  const h = String(hex).trim().replace(/^#/, "");
+  if (/^[0-9a-f]{3}$/i.test(h)) {
+    return [parseInt(h[0] + h[0], 16), parseInt(h[1] + h[1], 16), parseInt(h[2] + h[2], 16)];
+  }
+  if (/^[0-9a-f]{6}$/i.test(h)) {
+    return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+  }
+  return null;
+}
+
+function rgbAHex(rgb) {
+  return "#" + rgb.map((c) => c.toString(16).padStart(2, "0")).join("");
+}
+
+/* Acepta: URL de Lospec (https://lospec.com/palette-list/slug), un slug
+   suelto, o una lista de códigos hex separados por espacios/comas/saltos. */
+function parsearEntradaPaleta(texto) {
+  const t = String(texto || "").trim();
+  if (!t) return null;
+  const m = t.match(/lospec\.com\/palette-list\/([a-z0-9-]+)/i);
+  if (m) return { tipo: "slug", slug: m[1].toLowerCase() };
+  const trozos = t.split(/[\s,;]+/).filter(Boolean);
+  if (trozos.length && trozos.every((x) => hexARgb(x) !== null)) {
+    return { tipo: "hex", colores: trozos.map(hexARgb) };
+  }
+  if (/^[a-z0-9][a-z0-9-]*$/i.test(t)) return { tipo: "slug", slug: t.toLowerCase() };
+  return null;
+}
+
+/* --- Color: sRGB → OKLab (espacio perceptual moderno) --- */
+function srgbALineal(c) {
+  c /= 255;
+  return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+}
+
+function srgbAOklab(r, g, b) {
+  const rl = srgbALineal(r), gl = srgbALineal(g), bl = srgbALineal(b);
+  const l = Math.cbrt(0.4122214708 * rl + 0.5363325363 * gl + 0.0514459929 * bl);
+  const m = Math.cbrt(0.2119034982 * rl + 0.6806995451 * gl + 0.1073969566 * bl);
+  const s = Math.cbrt(0.0883024619 * rl + 0.2817188376 * gl + 0.6299787005 * bl);
+  return [
+    0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s,
+    1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
+    0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s,
+  ];
+}
+
+function prepararPaleta(colores, metrica) {
+  return {
+    colores,
+    metrica,
+    labs: metrica === "oklab" ? colores.map((c) => srgbAOklab(c[0], c[1], c[2])) : null,
+  };
+}
+
+function colorMasCercano(r, g, b, prep) {
+  let mejor = 0, mejorD = Infinity;
+  if (prep.metrica === "oklab") {
+    const p = srgbAOklab(r, g, b);
+    for (let i = 0; i < prep.labs.length; i++) {
+      const q = prep.labs[i];
+      const dL = p[0] - q[0], dA = p[1] - q[1], dB = p[2] - q[2];
+      const d = dL * dL + dA * dA + dB * dB;
+      if (d < mejorD) { mejorD = d; mejor = i; }
+    }
+  } else {
+    // "redmean": aproximación ponderada de distancia perceptual en RGB
+    for (let i = 0; i < prep.colores.length; i++) {
+      const c = prep.colores[i];
+      const rm = (r + c[0]) / 2;
+      const dr = r - c[0], dg = g - c[1], db = b - c[2];
+      const d = (2 + rm / 256) * dr * dr + 4 * dg * dg + (2 + (255 - rm) / 256) * db * db;
+      if (d < mejorD) { mejorD = d; mejor = i; }
+    }
+  }
+  return mejor;
+}
+
+const BAYER8 = [
+  [ 0, 32,  8, 40,  2, 34, 10, 42],
+  [48, 16, 56, 24, 50, 18, 58, 26],
+  [12, 44,  4, 36, 14, 46,  6, 38],
+  [60, 28, 52, 20, 62, 30, 54, 22],
+  [ 3, 35, 11, 43,  1, 33,  9, 41],
+  [51, 19, 59, 27, 49, 17, 57, 25],
+  [15, 47,  7, 39, 13, 45,  5, 37],
+  [63, 31, 55, 23, 61, 29, 53, 21],
+];
+
+/* opciones: { metrica: "oklab"|"rgb", dithering: "ninguno"|"floyd"|"bayer", intensidad: 0..100 } */
+function aplicarPaleta(img, colores, opciones) {
+  const prep = prepararPaleta(colores, opciones.metrica);
+  const { ancho, alto } = img;
+  const salida = new Uint8ClampedArray(img.datos);
+  const fuerza = (opciones.intensidad === undefined ? 100 : opciones.intensidad) / 100;
+  const memo = new Map();
+  const cercano = (r, g, b) => {
+    const k = (r << 16) | (g << 8) | b;
+    let i = memo.get(k);
+    if (i === undefined) { i = colorMasCercano(r, g, b, prep); memo.set(k, i); }
+    return i;
+  };
+
+  if (opciones.dithering === "floyd") {
+    // Difusión de error sobre una copia en coma flotante
+    const flot = new Float32Array(ancho * alto * 3);
+    for (let i = 0, j = 0; i < salida.length; i += 4, j += 3) {
+      flot[j] = salida[i]; flot[j + 1] = salida[i + 1]; flot[j + 2] = salida[i + 2];
+    }
+    for (let y = 0; y < alto; y++) {
+      for (let x = 0; x < ancho; x++) {
+        const p = (y * ancho + x) * 4, q = (y * ancho + x) * 3;
+        if (salida[p + 3] === 0) continue; // transparente: ni cambia ni propaga error
+        const r = limitar(Math.round(flot[q]), 0, 255);
+        const g = limitar(Math.round(flot[q + 1]), 0, 255);
+        const b = limitar(Math.round(flot[q + 2]), 0, 255);
+        const c = prep.colores[cercano(r, g, b)];
+        salida[p] = c[0]; salida[p + 1] = c[1]; salida[p + 2] = c[2];
+        const er = (flot[q] - c[0]) * fuerza;
+        const eg = (flot[q + 1] - c[1]) * fuerza;
+        const eb = (flot[q + 2] - c[2]) * fuerza;
+        const reparte = (dx, dy, f) => {
+          const nx = x + dx, ny = y + dy;
+          if (nx < 0 || nx >= ancho || ny >= alto) return;
+          const n = (ny * ancho + nx) * 3;
+          flot[n] += er * f; flot[n + 1] += eg * f; flot[n + 2] += eb * f;
+        };
+        reparte(1, 0, 7 / 16); reparte(-1, 1, 3 / 16); reparte(0, 1, 5 / 16); reparte(1, 1, 1 / 16);
+      }
+    }
+  } else {
+    const conBayer = opciones.dithering === "bayer";
+    for (let y = 0; y < alto; y++) {
+      for (let x = 0; x < ancho; x++) {
+        const p = (y * ancho + x) * 4;
+        if (salida[p + 3] === 0) continue;
+        let r = salida[p], g = salida[p + 1], b = salida[p + 2];
+        if (conBayer) {
+          const d = (BAYER8[y % 8][x % 8] / 64 - 0.5) * 64 * fuerza;
+          r = limitar(Math.round(r + d), 0, 255);
+          g = limitar(Math.round(g + d), 0, 255);
+          b = limitar(Math.round(b + d), 0, 255);
+        }
+        const c = prep.colores[cercano(r, g, b)];
+        salida[p] = c[0]; salida[p + 1] = c[1]; salida[p + 2] = c[2];
+      }
+    }
+  }
+  return { ancho, alto, datos: salida };
+}
+
+/* --- Reescalado --- */
+function calcularTamanoDestino(ancho, alto, anchoObj, altoObj, mantenerProporcion) {
+  if (!mantenerProporcion) return [anchoObj, altoObj];
+  const e = Math.min(anchoObj / ancho, altoObj / alto);
+  return [Math.max(1, Math.round(ancho * e)), Math.max(1, Math.round(alto * e))];
+}
+
+/* Promedio de área ("box sampling") con cobertura fraccionaria y color
+   ponderado por alfa: el mejor método genérico para reducir a 64×64. */
+function redimensionarArea(img, anchoD, altoD) {
+  const { ancho, alto, datos } = img;
+  const salida = new Uint8ClampedArray(anchoD * altoD * 4);
+  const ex = ancho / anchoD, ey = alto / altoD;
+  for (let j = 0; j < altoD; j++) {
+    const y0 = j * ey, y1 = y0 + ey;
+    for (let i = 0; i < anchoD; i++) {
+      const x0 = i * ex, x1 = x0 + ex;
+      let sr = 0, sg = 0, sb = 0, sa = 0, sw = 0;
+      for (let yy = Math.floor(y0); yy < Math.ceil(y1); yy++) {
+        const wy = Math.min(y1, yy + 1) - Math.max(y0, yy);
+        if (wy <= 0) continue;
+        for (let xx = Math.floor(x0); xx < Math.ceil(x1); xx++) {
+          const wx = Math.min(x1, xx + 1) - Math.max(x0, xx);
+          if (wx <= 0) continue;
+          const w = wx * wy;
+          const p = (yy * ancho + xx) * 4;
+          const a = datos[p + 3];
+          sr += datos[p] * a * w; sg += datos[p + 1] * a * w; sb += datos[p + 2] * a * w;
+          sa += a * w; sw += w;
+        }
+      }
+      const q = (j * anchoD + i) * 4;
+      if (sa > 0) {
+        salida[q] = Math.round(sr / sa);
+        salida[q + 1] = Math.round(sg / sa);
+        salida[q + 2] = Math.round(sb / sa);
+        salida[q + 3] = Math.round(sa / sw);
+      }
+    }
+  }
+  return { ancho: anchoD, alto: altoD, datos: salida };
+}
+
+function redimensionarVecino(img, anchoD, altoD) {
+  const { ancho, alto, datos } = img;
+  const salida = new Uint8ClampedArray(anchoD * altoD * 4);
+  for (let j = 0; j < altoD; j++) {
+    const sy = limitar(Math.floor((j + 0.5) * alto / altoD), 0, alto - 1);
+    for (let i = 0; i < anchoD; i++) {
+      const sx = limitar(Math.floor((i + 0.5) * ancho / anchoD), 0, ancho - 1);
+      const p = (sy * ancho + sx) * 4, q = (j * anchoD + i) * 4;
+      salida[q] = datos[p]; salida[q + 1] = datos[p + 1];
+      salida[q + 2] = datos[p + 2]; salida[q + 3] = datos[p + 3];
+    }
+  }
+  return { ancho: anchoD, alto: altoD, datos: salida };
+}
+
+/* --- Ajustes: brillo/contraste/saturación + grises/invertir/umbral ---
+   ajustes: { brillo: -100..100, contraste: -100..100, saturacion: -100..100,
+              grises: bool, invertir: bool, umbral: null | 0..255 } */
+function aplicarAjustes(img, ajustes) {
+  const { ancho, alto } = img;
+  const salida = new Uint8ClampedArray(img.datos);
+  const desplBrillo = (ajustes.brillo || 0) * 2.55;
+  const c = (ajustes.contraste || 0) * 2.55;
+  const fContraste = (259 * (c + 255)) / (255 * (259 - c));
+  const fSat = 1 + (ajustes.saturacion || 0) / 100;
+  const conUmbral = ajustes.umbral !== null && ajustes.umbral !== undefined;
+  for (let p = 0; p < salida.length; p += 4) {
+    let r = salida[p], g = salida[p + 1], b = salida[p + 2];
+    if (fSat !== 1) {
+      const luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      r = luma + (r - luma) * fSat;
+      g = luma + (g - luma) * fSat;
+      b = luma + (b - luma) * fSat;
+    }
+    r += desplBrillo; g += desplBrillo; b += desplBrillo;
+    r = fContraste * (r - 128) + 128;
+    g = fContraste * (g - 128) + 128;
+    b = fContraste * (b - 128) + 128;
+    if (ajustes.grises) {
+      const luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      r = g = b = luma;
+    }
+    if (ajustes.invertir) { r = 255 - r; g = 255 - g; b = 255 - b; }
+    if (conUmbral) {
+      const luma = 0.2126 * limitar(r, 0, 255) + 0.7152 * limitar(g, 0, 255) + 0.0722 * limitar(b, 0, 255);
+      r = g = b = luma >= ajustes.umbral ? 255 : 0;
+    }
+    salida[p] = limitar(Math.round(r), 0, 255);
+    salida[p + 1] = limitar(Math.round(g), 0, 255);
+    salida[p + 2] = limitar(Math.round(b), 0, 255);
+  }
+  return { ancho, alto, datos: salida };
+}
+
+/* --- ZIP sin compresión (método "store"): suficiente para PNGs, sin dependencias --- */
+const TABLA_CRC = (() => {
+  const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1;
+    t[n] = c;
+  }
+  return t;
+})();
+
+function crc32(datos) {
+  let c = 0xFFFFFFFF;
+  for (let i = 0; i < datos.length; i++) c = TABLA_CRC[(c ^ datos[i]) & 0xFF] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+
+/* archivos: [{ nombre, datos: Uint8Array }] → Uint8Array con el .zip completo */
+function crearZip(archivos) {
+  const cod = new TextEncoder();
+  const u16 = (v) => [v & 255, (v >> 8) & 255];
+  const u32 = (v) => [v & 255, (v >>> 8) & 255, (v >>> 16) & 255, (v >>> 24) & 255];
+  const FECHA_DOS = ((2026 - 1980) << 9) | (8 << 5) | 19; // fecha fija: solo informativa
+  const partes = [], centrales = [];
+  let offset = 0;
+  for (const { nombre, datos } of archivos) {
+    const nom = cod.encode(nombre);
+    const crc = crc32(datos);
+    // flag 0x0800: nombre de archivo en UTF-8
+    const comun = [...u16(20), ...u16(0x0800), ...u16(0), ...u16(0), ...u16(FECHA_DOS),
+                   ...u32(crc), ...u32(datos.length), ...u32(datos.length), ...u16(nom.length), ...u16(0)];
+    const local = new Uint8Array([...u32(0x04034b50), ...comun, ...nom]);
+    partes.push(local, datos);
+    centrales.push(new Uint8Array([...u32(0x02014b50), ...u16(20), ...comun,
+                                   ...u16(0), ...u16(0), ...u16(0), ...u32(0), ...u32(offset), ...nom]));
+    offset += local.length + datos.length;
+  }
+  const inicioCentral = offset;
+  let tamCentral = 0;
+  for (const c of centrales) tamCentral += c.length;
+  const fin = new Uint8Array([...u32(0x06054b50), ...u16(0), ...u16(0),
+                              ...u16(archivos.length), ...u16(archivos.length),
+                              ...u32(tamCentral), ...u32(inicioCentral), ...u16(0)]);
+  const zip = new Uint8Array(inicioCentral + tamCentral + fin.length);
+  let pos = 0;
+  for (const parte of [...partes, ...centrales, fin]) { zip.set(parte, pos); pos += parte.length; }
+  return zip;
+}
+
+/* ============================================================
+   LÓGICA PURA — FIN
+   ============================================================ */
+
+/* ============================================================
+   Estado de la app
+   ============================================================ */
+const imagenes = []; // { nombre, original: {ancho, alto, datos} }
+let indiceActivo = -1;
+let paleta = null; // { nombre, colores: [[r,g,b], ...] }
+
+let config = {};
+try { config = JSON.parse(localStorage.getItem("repixel_config")) || {}; } catch (e) {}
+let recientes = [];
+try { recientes = JSON.parse(localStorage.getItem("repixel_paletas")) || []; } catch (e) {}
+
+function guardarConfig() {
+  try { localStorage.setItem("repixel_config", JSON.stringify(config)); } catch (e) {}
+}
+function guardarRecientes() {
+  try { localStorage.setItem("repixel_paletas", JSON.stringify(recientes)); } catch (e) {}
+}
+
+const $ = (id) => document.getElementById(id);
+
+function avisar(texto) {
+  $("aviso").textContent = texto;
+}
+
+/* ============================================================
+   Carga de imágenes (archivos, carpeta, arrastrar y soltar)
+   ============================================================ */
+const EXT_IMAGEN = /\.(png|jpe?g|gif|webp|bmp|avif)$/i;
+
+function esImagen(archivo) {
+  return archivo.type.startsWith("image/") || EXT_IMAGEN.test(archivo.name);
+}
+
+async function archivoAImagen(archivo) {
+  const bitmap = await createImageBitmap(archivo);
+  const c = document.createElement("canvas");
+  c.width = bitmap.width; c.height = bitmap.height;
+  const ctx = c.getContext("2d");
+  ctx.drawImage(bitmap, 0, 0);
+  bitmap.close();
+  const d = ctx.getImageData(0, 0, c.width, c.height);
+  return { ancho: d.width, alto: d.height, datos: d.data };
+}
+
+async function cargarArchivos(lista) {
+  const validos = [...lista].filter(esImagen);
+  if (!validos.length) { avisar("No se encontraron imágenes."); return; }
+  avisar("");
+  for (const archivo of validos) {
+    try {
+      const original = await archivoAImagen(archivo);
+      imagenes.push({ nombre: archivo.name, original });
+    } catch (e) {
+      avisar(`No se pudo leer ${archivo.name}`);
+    }
+  }
+  if (indiceActivo < 0 && imagenes.length) indiceActivo = 0;
+  pintarMiniaturas();
+  refrescar();
+}
+
+/* Recorre carpetas soltadas (webkitGetAsEntry) recursivamente */
+function leerEntrada(entrada) {
+  return new Promise((resolver) => {
+    if (entrada.isFile) {
+      entrada.file((f) => resolver([f]), () => resolver([]));
+    } else if (entrada.isDirectory) {
+      const lector = entrada.createReader();
+      const pendientes = [];
+      const tanda = () => lector.readEntries(async (entradas) => {
+        if (!entradas.length) {
+          const anidados = await Promise.all(pendientes.map(leerEntrada));
+          resolver(anidados.flat());
+        } else {
+          pendientes.push(...entradas);
+          tanda(); // readEntries devuelve por tandas de ~100
+        }
+      }, () => resolver([]));
+      tanda();
+    } else resolver([]);
+  });
+}
+
+const zona = $("zona-soltar");
+zona.addEventListener("click", () => $("input-archivos").click());
+zona.addEventListener("dragover", (e) => { e.preventDefault(); zona.classList.add("encima"); });
+zona.addEventListener("dragleave", () => zona.classList.remove("encima"));
+zona.addEventListener("drop", async (e) => {
+  e.preventDefault();
+  zona.classList.remove("encima");
+  const items = [...(e.dataTransfer.items || [])];
+  const entradas = items.map((i) => i.webkitGetAsEntry && i.webkitGetAsEntry()).filter(Boolean);
+  if (entradas.length) {
+    const grupos = await Promise.all(entradas.map(leerEntrada));
+    cargarArchivos(grupos.flat());
+  } else {
+    cargarArchivos(e.dataTransfer.files);
+  }
+});
+
+$("btn-archivos").addEventListener("click", () => $("input-archivos").click());
+$("btn-carpeta").addEventListener("click", () => $("input-carpeta").click());
+$("input-archivos").addEventListener("change", (e) => { cargarArchivos(e.target.files); e.target.value = ""; });
+$("input-carpeta").addEventListener("change", (e) => { cargarArchivos(e.target.files); e.target.value = ""; });
+$("btn-limpiar").addEventListener("click", () => {
+  imagenes.length = 0;
+  indiceActivo = -1;
+  pintarMiniaturas();
+  refrescar();
+});
+
+function pintarMiniaturas() {
+  const cont = $("lista-miniaturas");
+  cont.innerHTML = "";
+  imagenes.forEach((img, i) => {
+    const div = document.createElement("div");
+    div.className = "miniatura" + (i === indiceActivo ? " activa" : "");
+    div.title = img.nombre;
+    const c = document.createElement("canvas");
+    c.width = img.original.ancho; c.height = img.original.alto;
+    c.getContext("2d").putImageData(new ImageData(img.original.datos, img.original.ancho), 0, 0);
+    const mini = document.createElement("img");
+    mini.src = c.toDataURL();
+    div.appendChild(mini);
+    div.addEventListener("click", () => { indiceActivo = i; pintarMiniaturas(); refrescar(); });
+    cont.appendChild(div);
+  });
+}
+
+/* ============================================================
+   Paleta (Lospec o hex manual)
+   ============================================================ */
+async function cargarPaleta() {
+  const entrada = parsearEntradaPaleta($("in-paleta").value);
+  if (!entrada) { avisar("No entiendo esa paleta: pega una URL de Lospec o códigos hex."); return; }
+  if (entrada.tipo === "hex") {
+    fijarPaleta({ nombre: `Manual (${entrada.colores.length} colores)`, colores: entrada.colores });
+    avisar("");
+    return;
+  }
+  avisar("Cargando paleta de Lospec…");
+  const urls = [
+    `https://lospec.com/palette-list/${entrada.slug}.json`,
+    `https://lospec.com/palette-api/v1/palette/${entrada.slug}`,
+  ];
+  for (const url of urls) {
+    try {
+      const resp = await fetch(url);
+      if (!resp.ok) continue;
+      const json = await resp.json();
+      const colores = (json.colors || []).map(hexARgb).filter(Boolean);
+      if (!colores.length) continue;
+      fijarPaleta({ nombre: json.name || entrada.slug, colores });
+      avisar("");
+      return;
+    } catch (e) { /* probar la siguiente URL */ }
+  }
+  avisar("No se pudo descargar (¿sin conexión o CORS?). En Lospec usa «Copy hex codes» y pégalos aquí.");
+}
+
+function fijarPaleta(p) {
+  paleta = p;
+  $("nombre-paleta").textContent = `${p.nombre} — ${p.colores.length} colores`;
+  const cont = $("muestras-paleta");
+  cont.innerHTML = "";
+  for (const c of p.colores) {
+    const s = document.createElement("span");
+    s.style.background = rgbAHex(c);
+    s.title = rgbAHex(c);
+    cont.appendChild(s);
+  }
+  recientes = [p, ...recientes.filter((r) => r.nombre !== p.nombre)].slice(0, 6);
+  guardarRecientes();
+  pintarRecientes();
+  config.paletaEntrada = $("in-paleta").value;
+  guardarConfig();
+  refrescar();
+}
+
+function pintarRecientes() {
+  const cont = $("paletas-recientes");
+  cont.innerHTML = "";
+  for (const r of recientes) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = r.nombre;
+    b.title = "Usar esta paleta";
+    b.addEventListener("click", () => fijarPaleta(r));
+    cont.appendChild(b);
+  }
+}
+
+$("btn-cargar-paleta").addEventListener("click", cargarPaleta);
+$("in-paleta").addEventListener("keydown", (e) => { if (e.key === "Enter") cargarPaleta(); });
+
+/* ============================================================
+   Proceso: ReSize → Ajustes → RePalette
+   ============================================================ */
+function leerOpciones() {
+  return {
+    resize: $("chk-resize").checked,
+    ancho: limitar(parseInt($("in-ancho").value, 10) || 64, 1, 4096),
+    alto: limitar(parseInt($("in-alto").value, 10) || 64, 1, 4096),
+    proporcion: $("chk-proporcion").checked,
+    metodoResize: $("sel-metodo-resize").value,
+    ajustes: $("chk-ajustes").checked,
+    brillo: parseInt($("sl-brillo").value, 10),
+    contraste: parseInt($("sl-contraste").value, 10),
+    saturacion: parseInt($("sl-saturacion").value, 10),
+    grises: $("chk-grises").checked,
+    invertir: $("chk-invertir").checked,
+    umbral: $("chk-umbral").checked ? parseInt($("sl-umbral").value, 10) : null,
+    repalette: $("chk-paleta").checked,
+    metrica: $("sel-metrica").value,
+    dithering: $("sel-dither").value,
+    intensidad: parseInt($("sl-intensidad").value, 10),
+    sufijo: $("in-sufijo").value,
+  };
+}
+
+function procesar(original, op) {
+  let img = original;
+  if (op.resize) {
+    const [w, h] = calcularTamanoDestino(img.ancho, img.alto, op.ancho, op.alto, op.proporcion);
+    if (w !== img.ancho || h !== img.alto) {
+      img = op.metodoResize === "vecino" ? redimensionarVecino(img, w, h) : redimensionarArea(img, w, h);
+    }
+  }
+  if (op.ajustes) {
+    img = aplicarAjustes(img, {
+      brillo: op.brillo, contraste: op.contraste, saturacion: op.saturacion,
+      grises: op.grises, invertir: op.invertir, umbral: op.umbral,
+    });
+  }
+  if (op.repalette && paleta) {
+    img = aplicarPaleta(img, paleta.colores, {
+      metrica: op.metrica, dithering: op.dithering, intensidad: op.intensidad,
+    });
+  }
+  return img;
+}
+
+/* ============================================================
+   Vista previa
+   ============================================================ */
+function dibujar(canvas, img) {
+  canvas.width = img.ancho;
+  canvas.height = img.alto;
+  canvas.getContext("2d").putImageData(new ImageData(img.datos, img.ancho), 0, 0);
+  const marco = canvas.parentElement;
+  const maxW = marco.clientWidth - 8, maxH = marco.clientHeight - 8;
+  let escala = Math.min(maxW / img.ancho, maxH / img.alto);
+  if (escala > 1) escala = Math.floor(escala); // ampliar solo a escala entera (píxel nítido)
+  canvas.style.width = Math.max(1, Math.round(img.ancho * escala)) + "px";
+  canvas.style.height = "auto";
+}
+
+let temporizador = null;
+function refrescar() {
+  clearTimeout(temporizador);
+  temporizador = setTimeout(refrescarAhora, 100);
+}
+
+function refrescarAhora() {
+  const hay = indiceActivo >= 0 && !!imagenes[indiceActivo];
+  $("btn-descargar").disabled = !hay;
+  $("btn-descargar-zip").disabled = imagenes.length === 0;
+  for (const id of ["brillo", "contraste", "saturacion", "umbral", "intensidad"]) {
+    $("out-" + id).textContent = $("sl-" + id).value;
+  }
+  for (const [tarjeta, chk] of [["tarjeta-resize", "chk-resize"], ["tarjeta-ajustes", "chk-ajustes"], ["tarjeta-paleta", "chk-paleta"]]) {
+    $(tarjeta).classList.toggle("inactiva", !$(chk).checked);
+  }
+  const op = leerOpciones();
+  config.opciones = op;
+  guardarConfig();
+  if (!hay) {
+    $("canvas-original").width = $("canvas-original").height = 0;
+    $("canvas-resultado").width = $("canvas-resultado").height = 0;
+    $("info-original").textContent = "";
+    $("info-resultado").textContent = "";
+    return;
+  }
+  const item = imagenes[indiceActivo];
+  dibujar($("canvas-original"), item.original);
+  $("info-original").textContent = `${item.nombre} — ${item.original.ancho}×${item.original.alto}`;
+  const resultado = procesar(item.original, op);
+  dibujar($("canvas-resultado"), resultado);
+  const conPaleta = op.repalette && paleta ? ` — ${paleta.colores.length} colores` : "";
+  $("info-resultado").textContent = `${nombreSalida(item.nombre, op.sufijo)} — ${resultado.ancho}×${resultado.alto}${conPaleta}`;
+}
+
+/* Cualquier cambio en los controles reprocesa la vista previa */
+document.querySelectorAll("input, select").forEach((el) => {
+  el.addEventListener("input", refrescar);
+  el.addEventListener("change", refrescar);
+});
+
+$("btn-reset-ajustes").addEventListener("click", () => {
+  $("sl-brillo").value = 0; $("sl-contraste").value = 0; $("sl-saturacion").value = 0;
+  $("chk-grises").checked = false; $("chk-invertir").checked = false;
+  $("chk-umbral").checked = false; $("sl-umbral").value = 128;
+  refrescar();
+});
+
+/* ============================================================
+   Descargas (PNG suelto o ZIP con todas)
+   ============================================================ */
+function nombreSalida(nombre, sufijo) {
+  return nombre.replace(/\.[^.]+$/, "") + (sufijo || "") + ".png";
+}
+
+function imagenAPngBlob(img) {
+  return new Promise((resolver) => {
+    const c = document.createElement("canvas");
+    c.width = img.ancho; c.height = img.alto;
+    c.getContext("2d").putImageData(new ImageData(img.datos, img.ancho), 0, 0);
+    c.toBlob(resolver, "image/png");
+  });
+}
+
+function descargarBlob(blob, nombre) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = nombre;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+
+$("btn-descargar").addEventListener("click", async () => {
+  const item = imagenes[indiceActivo];
+  if (!item) return;
+  const op = leerOpciones();
+  const blob = await imagenAPngBlob(procesar(item.original, op));
+  descargarBlob(blob, nombreSalida(item.nombre, op.sufijo));
+});
+
+$("btn-descargar-zip").addEventListener("click", async () => {
+  if (!imagenes.length) return;
+  const boton = $("btn-descargar-zip");
+  boton.disabled = true;
+  const textoOriginal = boton.textContent;
+  const op = leerOpciones();
+  const archivos = [];
+  const usados = new Map();
+  try {
+    for (let i = 0; i < imagenes.length; i++) {
+      boton.textContent = `Procesando ${i + 1}/${imagenes.length}…`;
+      const blob = await imagenAPngBlob(procesar(imagenes[i].original, op));
+      let nombre = nombreSalida(imagenes[i].nombre, op.sufijo);
+      const veces = (usados.get(nombre) || 0) + 1;
+      usados.set(nombre, veces);
+      if (veces > 1) nombre = nombre.replace(/\.png$/, `_${veces}.png`);
+      archivos.push({ nombre, datos: new Uint8Array(await blob.arrayBuffer()) });
+    }
+    const zip = crearZip(archivos);
+    descargarBlob(new Blob([zip], { type: "application/zip" }), "repixel.zip");
+  } finally {
+    boton.textContent = textoOriginal;
+    boton.disabled = false;
+  }
+});
+
+/* ============================================================
+   Restaurar configuración guardada
+   ============================================================ */
+(function restaurar() {
+  const op = config.opciones;
+  if (op) {
+    $("chk-resize").checked = op.resize !== false;
+    $("in-ancho").value = op.ancho || 64;
+    $("in-alto").value = op.alto || 64;
+    $("chk-proporcion").checked = op.proporcion !== false;
+    $("sel-metodo-resize").value = op.metodoResize || "area";
+    $("chk-ajustes").checked = !!op.ajustes;
+    $("sl-brillo").value = op.brillo || 0;
+    $("sl-contraste").value = op.contraste || 0;
+    $("sl-saturacion").value = op.saturacion || 0;
+    $("chk-grises").checked = !!op.grises;
+    $("chk-invertir").checked = !!op.invertir;
+    $("chk-umbral").checked = op.umbral !== null && op.umbral !== undefined;
+    if (op.umbral !== null && op.umbral !== undefined) $("sl-umbral").value = op.umbral;
+    $("chk-paleta").checked = op.repalette !== false;
+    $("sel-metrica").value = op.metrica || "oklab";
+    $("sel-dither").value = op.dithering || "ninguno";
+    $("sl-intensidad").value = op.intensidad === undefined ? 100 : op.intensidad;
+    $("in-sufijo").value = op.sufijo === undefined ? "_rp" : op.sufijo;
+  }
+  if (config.paletaEntrada) $("in-paleta").value = config.paletaEntrada;
+  pintarRecientes();
+  if (recientes.length) fijarPaleta(recientes[0]);
+  refrescarAhora();
+})();
+
+window.addEventListener("resize", refrescar);
+
+/* ============================================================
+   Esquina de estado
+   ============================================================ */
+document.getElementById("estado").textContent = VERSION;
+
+/* ============================================================
+   PWA: pantalla encendida, pantalla completa y offline
+   (requieren HTTPS o localhost; en desarrollo por http://IP no se activan)
+   ============================================================ */
+let bloqueoPantalla = null;
+async function mantenerPantallaEncendida() {
+  if (!MANTENER_PANTALLA) return;
+  if (!("wakeLock" in navigator) || bloqueoPantalla) return;
+  try {
+    bloqueoPantalla = await navigator.wakeLock.request("screen");
+    bloqueoPantalla.addEventListener("release", () => { bloqueoPantalla = null; });
+  } catch (e) { /* sin soporte o sin HTTPS: no pasa nada */ }
+}
+
+function ponerPantallaCompleta() {
+  if (!PANTALLA_COMPLETA) return;
+  if (location.protocol !== "https:") return;
+  if (document.fullscreenElement) return;
+  if (matchMedia("(display-mode: fullscreen), (display-mode: standalone)").matches) return;
+  const p = document.documentElement.requestFullscreen &&
+            document.documentElement.requestFullscreen({ navigationUI: "hide" });
+  if (p && p.catch) p.catch(() => {});
+}
+
+document.addEventListener("pointerdown", mantenerPantallaEncendida);
+window.addEventListener("keydown", mantenerPantallaEncendida);
+document.addEventListener("pointerdown", ponerPantallaCompleta);
+window.addEventListener("keydown", ponerPantallaCompleta);
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) mantenerPantallaEncendida();
+});
+
+if ("serviceWorker" in navigator &&
+    (location.protocol === "https:" || location.hostname === "localhost")) {
+  navigator.serviceWorker.register("sw.js");
+}
+</script>
+</body>
+</html>
