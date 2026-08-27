@@ -184,41 +184,56 @@
   .canal.g { background: #6fe39a; }
   .canal.b { background: #7aa6ff; }
 
+  /* Bloque de ajustes dentro de una tarjeta: los dos canales de ReVer y las
+     tres máscaras se dibujan igual. */
   #bloques-mascaras { display: flex; flex-direction: column; gap: 8px; }
-  .mascara {
+  .bloque {
     background: #161c28;
     border: 1px solid #2c3648;
     border-radius: 10px;
     padding: 8px 9px;
   }
-  .mascara .cabecera-mascara {
+  .bloque .cabecera-bloque {
     display: flex; align-items: center; gap: 7px;
-    cursor: pointer; user-select: none;
+    user-select: none;
     font-size: 0.92rem;
   }
-  .mascara .cabecera-mascara input[type="checkbox"] { width: 15px; height: 15px; accent-color: #5b8cff; }
-  .mascara .cuerpo-mascara { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
-  .mascara.inactiva .cuerpo-mascara { opacity: 0.4; pointer-events: none; }
+  label.cabecera-bloque { cursor: pointer; }   /* solo la cabecera con casilla */
+  .bloque .cabecera-bloque input[type="checkbox"] { width: 15px; height: 15px; accent-color: #5b8cff; }
+  .bloque .cuerpo-bloque { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+  .bloque.inactiva .cuerpo-bloque { opacity: 0.4; pointer-events: none; }
 
-  .visores-mascaras { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 8px; }
-  .visores-mascaras h3 { display: flex; align-items: center; gap: 5px; }
-  .visores-mascaras .marco { height: 112px; }
-  @media (max-width: 560px) { .visores-mascaras { grid-template-columns: repeat(2, 1fr); } }
+  /* Filas de visores pequeños bajo la vista principal */
+  .visores-mini { display: grid; gap: 8px; margin-top: 8px; }
+  .visores-mini h3 { display: flex; align-items: center; gap: 5px; }
+  .visores-mini .marco { height: 112px; }
+  #vista-ver .visores-mini { grid-template-columns: repeat(3, 1fr); }
+  #vista-mascaras .visores-mini { grid-template-columns: repeat(4, 1fr); }
+  @media (max-width: 560px) {
+    #vista-ver .visores-mini, #vista-mascaras .visores-mini { grid-template-columns: repeat(2, 1fr); }
+  }
 
   /* Visores */
   .visores { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   @media (max-width: 560px) { .visores { grid-template-columns: 1fr; } }
   .visor h3 { font-size: 0.85rem; color: #8b96ad; font-weight: 600; margin-bottom: 6px; }
+  /* El marco recorta y el lienzo se coloca a mano dentro: el zoom y el paneo los
+     lleva el estado de vista compartido, no el scroll del navegador. */
   .visor .marco {
     height: 300px;
     border: 1px solid #2c3648;
     border-radius: 10px;
-    display: grid;
-    place-items: center;
-    overflow: auto;
+    position: relative;
+    overflow: hidden;
     background: repeating-conic-gradient(#242c3d 0% 25%, #1a2130 0% 50%) 0 0 / 16px 16px;
+    touch-action: none;   /* arrastrar dentro del marco panea, no scrollea */
+    cursor: grab;
   }
-  .visor canvas { image-rendering: pixelated; display: block; }
+  .visor .marco.agarrando { cursor: grabbing; }
+  .visor canvas { image-rendering: pixelated; display: block; position: absolute; }
+
+  #nivel-zoom { color: #9fb0d0; font-variant-numeric: tabular-nums; min-width: 76px; }
+  #controles-zoom .boton { padding: 4px 10px; }
   .visor .info { color: #55617a; font-size: 0.78rem; margin-top: 4px; min-height: 1em; }
 
   #aviso { color: #ffb86b; font-size: 0.85rem; min-height: 1.1em; margin-top: 6px; }
@@ -282,10 +297,59 @@
         </div>
       </div>
 
+      <div class="tarjeta" id="tarjeta-ver">
+        <label class="cabecera">
+          <input type="checkbox" id="chk-ver" checked>
+          <span class="paso">2</span><strong>ReVer</strong>
+        </label>
+        <div class="cuerpo">
+          <div class="nota">Lo que ve RePixel antes de la paleta. De la imagen ya reescalada salen dos canales: el de <b>color</b> es el que se palettiza (así decides qué colores acaba eligiendo RePalette) y el de <b>bordes</b> no se ve en la salida, se mezcla con el anterior justo antes de palettizar para acentuar los contornos.</div>
+
+          <div class="bloque">
+            <div class="cabecera-bloque"><strong>Canal de color</strong></div>
+            <div class="cuerpo-bloque">
+              <div class="fila"><label style="width:78px">Brillo</label><input type="range" id="sl-ver-brillo" min="-100" max="100" value="0"><output id="out-ver-brillo">0</output></div>
+              <div class="fila"><label style="width:78px">Contraste</label><input type="range" id="sl-ver-contraste" min="-100" max="100" value="0"><output id="out-ver-contraste">0</output></div>
+              <div class="fila"><label style="width:78px">Saturación</label><input type="range" id="sl-ver-saturacion" min="-100" max="100" value="0"><output id="out-ver-saturacion">0</output></div>
+              <div class="fila"><label style="width:78px">Tono</label><input type="range" id="sl-ver-tono" min="-180" max="180" value="0"><output id="out-ver-tono">0</output></div>
+              <div class="fila"><button class="boton" id="btn-reset-ajustes">Restablecer ajustes</button></div>
+            </div>
+          </div>
+
+          <div class="bloque" id="bloque-bordes">
+            <label class="cabecera-bloque">
+              <input type="checkbox" id="chk-bordes" checked><strong>Canal de bordes</strong>
+            </label>
+            <div class="cuerpo-bloque">
+              <div class="fila">
+                <label style="width:78px">Método</label>
+                <select id="sel-bordes-metodo">
+                  <option value="sobel">Sobel (gradiente)</option>
+                  <option value="laplaciano">Laplaciano (línea fina)</option>
+                  <option value="color">Diferencia de color</option>
+                </select>
+              </div>
+              <div class="fila"><label style="width:78px">Umbral</label><input type="range" id="sl-bordes-umbral" min="0" max="255" value="24"><output id="out-bordes-umbral">24</output></div>
+              <div class="fila"><label><input type="checkbox" id="chk-bordes-silueta" checked> Incluir la silueta (el borde del alfa)</label></div>
+              <div class="fila">
+                <label style="width:78px">Influye</label>
+                <select id="sel-bordes-modo">
+                  <option value="oscurecer">Oscureciendo (contorno oscuro)</option>
+                  <option value="aclarar">Aclarando (contorno claro)</option>
+                  <option value="realce">Realzando (más contraste local)</option>
+                </select>
+              </div>
+              <div class="fila"><label style="width:78px">Influencia</label><input type="range" id="sl-bordes-influencia" min="0" max="100" value="35"><output id="out-bordes-influencia">35</output></div>
+              <div class="nota">Los bordes se buscan sobre la imagen de partida y no sobre la ya ajustada: hundir el contraste para forzar la paleta no cambia dónde están los bordes.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="tarjeta" id="tarjeta-paleta">
         <label class="cabecera">
           <input type="checkbox" id="chk-paleta" checked>
-          <span class="paso">2</span><strong>RePalette</strong>
+          <span class="paso">3</span><strong>RePalette</strong>
         </label>
         <div class="cuerpo">
           <div class="fila">
@@ -320,10 +384,10 @@
       <div class="tarjeta" id="tarjeta-mascaras">
         <label class="cabecera">
           <input type="checkbox" id="chk-mascaras">
-          <span class="paso">3</span><strong>Máscaras RGB</strong>
+          <span class="paso">4</span><strong>Máscaras RGB</strong>
         </label>
         <div class="cuerpo">
-          <div class="nota">Una sola textura para el shader: <b>R</b> metallic, <b>G</b> smoothness, <b>B</b> emisivo. Cada canal tiene sus ajustes y se calcula sobre el resultado con la paleta ya aplicada.</div>
+          <div class="nota">Una sola textura para el shader: <b>R</b> metallic, <b>G</b> smoothness, <b>B</b> emisivo. Cada canal tiene sus ajustes y se calcula sobre el resultado final, con la paleta ya aplicada.</div>
           <div id="bloques-mascaras"></div>
           <div class="fila"><button class="boton" id="btn-reset-mascaras">Restablecer máscaras</button></div>
         </div>
@@ -333,7 +397,16 @@
     <!-- ==================== Columna derecha: vista previa + descarga ==================== -->
     <div class="columna-vista">
       <div class="tarjeta">
-        <div class="visores">
+        <div class="fila" id="controles-zoom">
+          <strong>Vista</strong>
+          <button class="boton" id="btn-zoom-menos" title="Alejar">−</button>
+          <button class="boton" id="btn-zoom-mas" title="Acercar">+</button>
+          <button class="boton" id="btn-zoom-ajustar" title="Volver al ajuste (o doble clic en una vista)">Ajustar</button>
+          <span class="nota" id="nivel-zoom"></span>
+          <span style="flex:1"></span>
+          <span class="nota">Rueda para acercar, arrastra para mover. Sincronizado entre todas las vistas.</span>
+        </div>
+        <div class="visores" style="margin-top:10px">
           <div class="visor">
             <h3>Original</h3>
             <div class="marco"><canvas id="canvas-original"></canvas></div>
@@ -347,12 +420,34 @@
         </div>
       </div>
 
+      <div class="tarjeta" id="vista-ver" style="margin-top:12px">
+        <div class="fila">
+          <strong>Lo que ve RePixel</strong>
+          <span class="nota">los dos canales y lo que entra a RePalette</span>
+        </div>
+        <div class="visores-mini">
+          <div class="visor">
+            <h3>Canal de color</h3>
+            <div class="marco"><canvas id="canvas-ver-color"></canvas></div>
+          </div>
+          <div class="visor">
+            <h3>Canal de bordes</h3>
+            <div class="marco"><canvas id="canvas-ver-bordes"></canvas></div>
+          </div>
+          <div class="visor">
+            <h3>Entrada a RePalette</h3>
+            <div class="marco"><canvas id="canvas-ver-entrada"></canvas></div>
+          </div>
+        </div>
+        <div class="info" id="info-ver"></div>
+      </div>
+
       <div class="tarjeta" id="vista-mascaras" style="margin-top:12px">
         <div class="fila">
           <strong>Textura de máscaras</strong>
           <span class="nota">R metallic · G smoothness · B emisivo</span>
         </div>
-        <div class="visores-mascaras">
+        <div class="visores-mini">
           <div class="visor">
             <h3><span class="canal r">R</span> Metallic</h3>
             <div class="marco"><canvas id="canvas-m-metallic"></canvas></div>
@@ -399,7 +494,7 @@
    ⚠️ Subir VERSION en cada despliegue: se muestra en la esquina
    de estado para verificar qué versión corre el dispositivo.
    ============================================================ */
-const VERSION = "v2026-08-20b";
+const VERSION = "v2026-08-27";
 const MANTENER_PANTALLA = false;
 const PANTALLA_COMPLETA = false;
 
@@ -622,9 +717,230 @@ function redimensionarVecino(img, anchoD, altoD) {
   return { ancho: anchoD, alto: altoD, datos: salida };
 }
 
-/* --- Ajustes: brillo/contraste/saturación + grises/invertir/umbral ---
-   ajustes: { brillo: -100..100, contraste: -100..100, saturacion: -100..100,
-              grises: bool, invertir: bool, umbral: null | 0..255 } */
+/* --- ReVer: lo que ve RePixel antes de la paleta ---
+   De la imagen ya reescalada salen dos canales:
+   · el de COLOR (brillo, contraste, saturación, tono) es el que se palettiza,
+     así que es el que decide qué colores acaba eligiendo RePalette;
+   · el de BORDES no se ve en la salida: se mezcla con el de color justo antes
+     de RePalette para acentuar los contornos.
+   Los bordes se buscan sobre la imagen de partida y no sobre la ya ajustada a
+   propósito: hundir el contraste para forzar la paleta no debe mover los bordes.
+   Y como la mezcla ocurre ANTES de palettizar, el contorno acentuado sale con
+   colores de la paleta por construcción: aquí no se inventa ningún color final. */
+
+function luminancia(r, g, b) { return 0.2126 * r + 0.7152 * g + 0.0722 * b; }
+
+/* RGB 0-255 ↔ HSL (h, s, l en 0..1). La saturación y el tono se tocan en HSL y
+   no con una matriz sobre RGB para que el tono gire como en cualquier editor:
+   +120° sobre un rojo da un verde, no un verde apagado. */
+function rgbAHsl(r, g, b) {
+  const rn = r / 255, gn = g / 255, bn = b / 255;
+  const max = Math.max(rn, gn, bn), min = Math.min(rn, gn, bn);
+  const l = (max + min) / 2, d = max - min;
+  if (d === 0) return [0, 0, l];
+  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+  let h;
+  if (max === rn) h = ((gn - bn) / d + (gn < bn ? 6 : 0)) / 6;
+  else if (max === gn) h = ((bn - rn) / d + 2) / 6;
+  else h = ((rn - gn) / d + 4) / 6;
+  return [h, s, l];
+}
+
+function hslARgb(h, s, l) {
+  if (s === 0) { const v = Math.round(l * 255); return [v, v, v]; }
+  const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+  const p = 2 * l - q;
+  const canal = (t) => {
+    t -= Math.floor(t); // el tono es circular: da igual si se sale de 0..1
+    if (t < 1 / 6) return p + (q - p) * 6 * t;
+    if (t < 1 / 2) return q;
+    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+    return p;
+  };
+  return [Math.round(canal(h + 1 / 3) * 255), Math.round(canal(h) * 255), Math.round(canal(h - 1 / 3) * 255)];
+}
+
+/* Los sliders de toda la vida. aj: { brillo, contraste, saturacion, tono },
+   todo a 0 = identidad. Los píxeles transparentes no se tocan: no hay color
+   que ajustar y así el ajuste nunca se cuela en el halo del reescalado. */
+function ajustarColor(img, aj) {
+  const { ancho, alto } = img;
+  const datos = new Uint8ClampedArray(img.datos);
+  const brillo = ((aj && aj.brillo) || 0) * 2.55;
+  const c = ((aj && aj.contraste) || 0) * 2.55;
+  const sat = 1 + ((aj && aj.saturacion) || 0) / 100;
+  const tono = ((aj && aj.tono) || 0) / 360;
+  if (!brillo && !c && sat === 1 && !tono) return { ancho, alto, datos };
+  // Fórmula clásica del contraste: pivota en el gris medio y satura suave.
+  const fContraste = (259 * (c + 255)) / (255 * (259 - c));
+  const n = ancho * alto;
+  for (let i = 0, p = 0; i < n; i++, p += 4) {
+    if (img.datos[p + 3] === 0) continue;
+    let r = img.datos[p], g = img.datos[p + 1], b = img.datos[p + 2];
+    if (brillo) { r += brillo; g += brillo; b += brillo; }
+    if (c) {
+      r = fContraste * (r - 128) + 128;
+      g = fContraste * (g - 128) + 128;
+      b = fContraste * (b - 128) + 128;
+    }
+    r = limitar(r, 0, 255); g = limitar(g, 0, 255); b = limitar(b, 0, 255);
+    if (sat !== 1 || tono) {
+      const hsl = rgbAHsl(r, g, b);
+      const rgb = hslARgb(hsl[0] + tono, limitar(hsl[1] * sat, 0, 1), hsl[2]);
+      r = rgb[0]; g = rgb[1]; b = rgb[2];
+    }
+    datos[p] = Math.round(r); datos[p + 1] = Math.round(g); datos[p + 2] = Math.round(b);
+  }
+  return { ancho, alto, datos };
+}
+
+/* A partir de este alfa un píxel cuenta como parte del sprite: el halo de
+   semitransparencias que deja el promedio de área no es silueta. */
+const OPACO_MINIMO = 128;
+
+const VECINOS4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+
+/* Sobel 3×3 sobre una función que da el valor de cada vecino, normalizado a
+   0-255: el gradiente máximo de un salto de 0 a 255 es 4×255. */
+function magnitudSobel(valorEn) {
+  const gx = (valorEn(1, -1) + 2 * valorEn(1, 0) + valorEn(1, 1)) -
+             (valorEn(-1, -1) + 2 * valorEn(-1, 0) + valorEn(-1, 1));
+  const gy = (valorEn(-1, 1) + 2 * valorEn(0, 1) + valorEn(1, 1)) -
+             (valorEn(-1, -1) + 2 * valorEn(0, -1) + valorEn(1, -1));
+  return Math.min(255, Math.sqrt(gx * gx + gy * gy) / 4);
+}
+
+/* Mapa de bordes: un valor 0-255 por píxel (0 = liso), uno por píxel y no
+   cuatro, igual que las máscaras.
+   op: { metodo: "sobel"|"laplaciano"|"color", umbral: 0..255, silueta: bool }
+   · sobel: el gradiente de toda la vida; marca el borde ancho y gradual.
+   · laplaciano: la segunda derivada; línea más fina y más ruidosa.
+   · color: la mayor diferencia de canal con los 4 vecinos; pilla los cambios de
+     tono que la luminancia no ve (un rojo y un verde igual de claros).
+   Los píxeles transparentes no participan en el gradiente de color —para el
+   contorno del sprite está la opción de silueta, que mira solo el alfa—, y
+   fuera del lienzo se repite el píxel central: sin vecino real no hay gradiente
+   que medir, así que un sprite que llega al borde no se rodea de marco. */
+function detectarBordes(img, op) {
+  const { ancho, alto, datos } = img;
+  const n = ancho * alto;
+  const lum = new Float32Array(n);
+  const dentro = new Uint8Array(n);
+  for (let i = 0, p = 0; i < n; i++, p += 4) {
+    lum[i] = luminancia(datos[p], datos[p + 1], datos[p + 2]);
+    dentro[i] = datos[p + 3] >= OPACO_MINIMO ? 1 : 0;
+  }
+  const metodo = (op && op.metodo) || "sobel";
+  const umbral = limitar(op && op.umbral !== undefined ? op.umbral : 0, 0, 255);
+  const conSilueta = !!(op && op.silueta);
+  const salida = new Uint8ClampedArray(n);
+  const vecino = (x, y, i) => {
+    if (x < 0 || x >= ancho || y < 0 || y >= alto) return i;
+    const j = y * ancho + x;
+    return dentro[j] ? j : i;
+  };
+  for (let y = 0; y < alto; y++) {
+    for (let x = 0; x < ancho; x++) {
+      const i = y * ancho + x;
+      let v = 0;
+      if (dentro[i]) {
+        if (metodo === "color") {
+          const p = i * 4;
+          for (const [dx, dy] of VECINOS4) {
+            const q = vecino(x + dx, y + dy, i) * 4;
+            v = Math.max(v, Math.abs(datos[p] - datos[q]),
+                            Math.abs(datos[p + 1] - datos[q + 1]),
+                            Math.abs(datos[p + 2] - datos[q + 2]));
+          }
+        } else if (metodo === "laplaciano") {
+          // Se divide entre 2 y no entre 4 para que un escalón de 0 a 255 (que
+          // solo tiene un vecino distinto) marque medio canal en vez de un
+          // cuarto; una mota suelta satura, que es justo lo que se quiere ver.
+          let suma = 0;
+          for (const [dx, dy] of VECINOS4) suma += lum[vecino(x + dx, y + dy, i)];
+          v = Math.abs(4 * lum[i] - suma) / 2;
+        } else {
+          v = magnitudSobel((dx, dy) => lum[vecino(x + dx, y + dy, i)]);
+        }
+      }
+      if (conSilueta) {
+        v = Math.max(v, magnitudSobel((dx, dy) => {
+          const nx = x + dx, ny = y + dy;
+          if (nx < 0 || nx >= ancho || ny < 0 || ny >= alto) return dentro[i] * 255;
+          return dentro[ny * ancho + nx] * 255;
+        }));
+      }
+      // Corte seco: por debajo del umbral no es un borde, es ruido.
+      salida[i] = v >= umbral ? Math.round(v) : 0;
+    }
+  }
+  return salida;
+}
+
+/* Media 3×3 de cada canal contando solo los píxeles opacos (el central
+   incluido): la referencia contra la que empuja el modo "realce". */
+function mediaVecindad(img) {
+  const { ancho, alto, datos } = img;
+  const media = new Float32Array(ancho * alto * 3);
+  for (let y = 0; y < alto; y++) {
+    for (let x = 0; x < ancho; x++) {
+      let sr = 0, sg = 0, sb = 0, cuenta = 0;
+      for (let dy = -1; dy <= 1; dy++) {
+        const ny = y + dy;
+        if (ny < 0 || ny >= alto) continue;
+        for (let dx = -1; dx <= 1; dx++) {
+          const nx = x + dx;
+          if (nx < 0 || nx >= ancho) continue;
+          const q = (ny * ancho + nx) * 4;
+          if (datos[q + 3] === 0) continue;
+          sr += datos[q]; sg += datos[q + 1]; sb += datos[q + 2]; cuenta++;
+        }
+      }
+      const m = (y * ancho + x) * 3;
+      if (cuenta) { media[m] = sr / cuenta; media[m + 1] = sg / cuenta; media[m + 2] = sb / cuenta; }
+    }
+  }
+  return media;
+}
+
+/* Mezcla el canal de bordes con el de color. Con influencia 0 no toca nada.
+   op: { modo: "oscurecer"|"aclarar"|"realce", influencia: 0..100 } */
+function mezclarBordes(img, bordes, op) {
+  const { ancho, alto } = img;
+  const n = ancho * alto;
+  const datos = new Uint8ClampedArray(img.datos);
+  const k = limitar((op && op.influencia !== undefined ? op.influencia : 0) / 100, 0, 1);
+  if (!k) return { ancho, alto, datos };
+  const modo = (op && op.modo) || "oscurecer";
+  const media = modo === "realce" ? mediaVecindad(img) : null;
+  for (let i = 0, p = 0; i < n; i++, p += 4) {
+    if (img.datos[p + 3] === 0) continue;
+    const e = (bordes[i] / 255) * k;
+    if (e <= 0) continue;
+    for (let ch = 0; ch < 3; ch++) {
+      const v = img.datos[p + ch];
+      if (modo === "aclarar") datos[p + ch] = Math.round(v + (255 - v) * e);
+      // Realce: aleja el píxel de la media de su vecindad. El ×2 es para que el
+      // empujón se note antes de que RePalette lo redondee a la paleta.
+      else if (modo === "realce") datos[p + ch] = Math.round(v + (v - media[i * 3 + ch]) * e * 2);
+      else datos[p + ch] = Math.round(v * (1 - e));
+    }
+  }
+  return { ancho, alto, datos };
+}
+
+/* Un mapa de 0-255 como imagen en grises opaca, para poder mirar el canal de
+   bordes entero: también donde la imagen es transparente. */
+function mapaAImagen(ancho, alto, valores) {
+  const n = ancho * alto;
+  const datos = new Uint8ClampedArray(n * 4);
+  for (let i = 0, p = 0; i < n; i++, p += 4) {
+    datos[p] = datos[p + 1] = datos[p + 2] = valores[i];
+    datos[p + 3] = 255;
+  }
+  return { ancho, alto, datos };
+}
+
 /* --- Máscaras: la textura RGB para el shader (R metallic, G smoothness, B emisivo) ---
    Cada canal se calcula por separado a partir de la imagen final y sus propios
    ajustes, y se combina al final. Son grises: un solo valor 0-255 por píxel. */
@@ -637,7 +953,7 @@ function valorFuente(r, g, b, fuente) {
     case "azul": return b;
     case "maximo": return Math.max(r, g, b);
     case "saturacion": return Math.max(r, g, b) - Math.min(r, g, b);
-    default: return 0.2126 * r + 0.7152 * g + 0.0722 * b; // luminancia
+    default: return luminancia(r, g, b);
   }
 }
 
@@ -938,7 +1254,7 @@ $("btn-cargar-paleta").addEventListener("click", cargarPaleta);
 $("in-paleta").addEventListener("keydown", (e) => { if (e.key === "Enter") cargarPaleta(); });
 
 /* ============================================================
-   Proceso: ReSize → Ajustes → RePalette
+   Proceso: ReSize → ReVer → RePalette (→ Máscaras, rama aparte)
    ============================================================ */
 /* ============================================================
    Máscaras: los tres canales de la textura RGB
@@ -962,12 +1278,12 @@ const FUENTES = [
    aquí en lugar de repetir el mismo HTML tres veces. */
 (function construirBloquesMascaras() {
   $("bloques-mascaras").innerHTML = CANALES.map((c) => `
-    <div class="mascara" id="mascara-${c.clave}">
-      <label class="cabecera-mascara">
+    <div class="bloque" id="mascara-${c.clave}">
+      <label class="cabecera-bloque">
         <input type="checkbox" id="chk-${c.clave}" checked>
         <span class="canal ${c.canal}">${c.canal.toUpperCase()}</span><strong>${c.etiqueta}</strong>
       </label>
-      <div class="cuerpo-mascara">
+      <div class="cuerpo-bloque">
         <div class="fila">
           <label style="width:72px">Fuente</label>
           <select id="sel-${c.clave}-fuente">${FUENTES.map(([v, n]) => `<option value="${v}">${n}</option>`).join("")}</select>
@@ -1001,6 +1317,21 @@ function leerOpciones() {
     alto: limitar(parseInt($("in-alto").value, 10) || 64, 1, 4096),
     proporcion: $("chk-proporcion").checked,
     metodoResize: $("sel-metodo-resize").value,
+    ver: $("chk-ver").checked,
+    ajustes: {
+      brillo: parseInt($("sl-ver-brillo").value, 10) || 0,
+      contraste: parseInt($("sl-ver-contraste").value, 10) || 0,
+      saturacion: parseInt($("sl-ver-saturacion").value, 10) || 0,
+      tono: parseInt($("sl-ver-tono").value, 10) || 0,
+    },
+    bordes: {
+      activos: $("chk-bordes").checked,
+      metodo: $("sel-bordes-metodo").value,
+      umbral: limitar(parseInt($("sl-bordes-umbral").value, 10) || 0, 0, 255),
+      silueta: $("chk-bordes-silueta").checked,
+      modo: $("sel-bordes-modo").value,
+      influencia: limitar(parseInt($("sl-bordes-influencia").value, 10) || 0, 0, 100),
+    },
     repalette: $("chk-paleta").checked,
     metrica: $("sel-metrica").value,
     dithering: $("sel-dither").value,
@@ -1020,12 +1351,44 @@ function procesar(original, op) {
       img = op.metodoResize === "vecino" ? redimensionarVecino(img, w, h) : redimensionarArea(img, w, h);
     }
   }
+  // ReVer: dos canales que salen de la MISMA imagen reescalada. El de color es
+  // el que se palettiza; el de bordes no se ve, solo acentúa lo que ve RePalette.
+  const fuente = img;
+  let color = fuente, bordes = null;
+  if (op.ver) {
+    color = ajustarColor(fuente, op.ajustes);
+    img = color;
+    if (op.bordes.activos) {
+      bordes = detectarBordes(fuente, op.bordes);
+      img = mezclarBordes(color, bordes, op.bordes);
+    }
+  }
+  const entrada = img;
   if (op.repalette && paleta) {
     img = aplicarPaleta(img, paleta.colores, {
       metrica: op.metrica, dithering: op.dithering, intensidad: op.intensidad,
     });
   }
-  return img;
+  return { imagen: img, color, bordes, entrada };
+}
+
+/* Qué está haciendo ReVer, en una línea: los ajustes que no están a cero y
+   cuánta imagen ha marcado el canal de bordes. */
+const MODOS_BORDE = { oscurecer: "oscureciendo", aclarar: "aclarando", realce: "realzando" };
+const AJUSTES = [["brillo", "brillo"], ["contraste", "contraste"],
+                 ["saturacion", "saturación"], ["tono", "tono"]];
+
+function textoVer(op, salida) {
+  const tocados = AJUSTES
+    .filter(([clave]) => op.ajustes[clave])
+    .map(([clave, etiqueta]) => `${etiqueta} ${op.ajustes[clave] > 0 ? "+" : ""}${op.ajustes[clave]}`);
+  const color = tocados.length ? tocados.join(" · ") : "color sin tocar";
+  if (!salida.bordes) return color + " · sin canal de bordes";
+  let marcados = 0;
+  for (let i = 0; i < salida.bordes.length; i++) if (salida.bordes[i]) marcados++;
+  const total = salida.color.ancho * salida.color.alto;
+  return `${color} · bordes en ${marcados} px (${Math.round(marcados * 100 / total)} %), ` +
+    `${MODOS_BORDE[op.bordes.modo]} al ${op.bordes.influencia} %`;
 }
 
 /* Las máscaras se calculan sobre el resultado final (con la paleta ya aplicada)
@@ -1042,16 +1405,124 @@ function procesarMascaras(resultado, op) {
 /* ============================================================
    Vista previa
    ============================================================ */
+/* Estado de vista compartido por los seis visores. El zoom es un multiplicador
+   sobre la escala de ajuste (1 = la imagen entera cabe en su marco) y (cx, cy)
+   es el punto de la imagen que se ancla al centro, en coordenadas 0..1. Al ser
+   normalizado, original y resultado quedan sincronizados aunque midan distinto. */
+const vista = { zoom: 1, cx: 0.5, cy: 0.5 };
+const ZOOM_MIN = 1, ZOOM_MAX = 64;
+
+/* Escala a la que se ve un lienzo. Al ampliar se redondea a entero para que el
+   píxel siga siendo cuadrado: en pixel art eso importa más que el zoom exacto. */
+function escalaDe(marco, ancho, alto) {
+  const maxW = marco.clientWidth - 8, maxH = marco.clientHeight - 8;
+  if (maxW <= 0 || maxH <= 0) return 0;
+  let escala = Math.min(maxW / ancho, maxH / alto) * vista.zoom;
+  if (escala >= 1) escala = Math.floor(escala);
+  return Math.max(escala, 0.02);
+}
+
+/* Centrado si la imagen cabe entera; si no, anclado en (cx, cy) y sin dejar
+   que se despegue de los bordes del marco. */
+function colocar(canvas) {
+  const marco = canvas.parentElement;
+  if (!canvas.width || !canvas.height) return;
+  const escala = escalaDe(marco, canvas.width, canvas.height);
+  if (!escala) return;
+  const w = canvas.width * escala, h = canvas.height * escala;
+  const cw = marco.clientWidth, ch = marco.clientHeight;
+  canvas.style.width = Math.max(1, Math.round(w)) + "px";
+  canvas.style.height = Math.max(1, Math.round(h)) + "px";
+  canvas.style.left = Math.round(w <= cw ? (cw - w) / 2 : limitar(cw / 2 - vista.cx * w, cw - w, 0)) + "px";
+  canvas.style.top = Math.round(h <= ch ? (ch - h) / 2 : limitar(ch / 2 - vista.cy * h, ch - h, 0)) + "px";
+}
+
+function recolocarTodo() {
+  for (const canvas of document.querySelectorAll(".visor canvas")) colocar(canvas);
+  const res = $("canvas-resultado");
+  if (!res.width) { $("nivel-zoom").textContent = ""; return; }
+  const escala = escalaDe(res.parentElement, res.width, res.height);
+  const texto = escala >= 1 ? `${Math.round(escala)}×` : `1/${Math.round(1 / escala)}`;
+  $("nivel-zoom").textContent = texto + (vista.zoom === ZOOM_MIN ? " · ajustado" : "");
+}
+
+/* Cambia el zoom dejando quieto el punto de la imagen que hay bajo el cursor.
+   Sin cursor (los botones) se conserva el punto anclado. */
+function aplicarZoom(nuevo, marco, clientX, clientY) {
+  const z = limitar(nuevo, ZOOM_MIN, ZOOM_MAX);
+  if (z === vista.zoom) return false;
+  const canvas = marco && marco.querySelector("canvas");
+  const rc = canvas && canvas.width ? canvas.getBoundingClientRect() : null;
+  if (rc && rc.width && rc.height && clientX !== undefined) {
+    const ux = limitar((clientX - rc.left) / rc.width, 0, 1);
+    const uy = limitar((clientY - rc.top) / rc.height, 0, 1);
+    const rm = marco.getBoundingClientRect();
+    vista.zoom = z;
+    const escala = escalaDe(marco, canvas.width, canvas.height);
+    const w = canvas.width * escala, h = canvas.height * escala;
+    vista.cx = limitar(ux + (rm.width / 2 - (clientX - rm.left)) / w, 0, 1);
+    vista.cy = limitar(uy + (rm.height / 2 - (clientY - rm.top)) / h, 0, 1);
+  } else {
+    vista.zoom = z;
+  }
+  recolocarTodo();
+  return true;
+}
+
+function ajustarVista() {
+  vista.zoom = ZOOM_MIN;
+  vista.cx = vista.cy = 0.5;
+  recolocarTodo();
+}
+
+function conectarVista(marco) {
+  marco.addEventListener("wheel", (e) => {
+    const nuevo = limitar(vista.zoom * (e.deltaY < 0 ? 1.25 : 1 / 1.25), ZOOM_MIN, ZOOM_MAX);
+    // Ya ajustada y alejando: deja pasar la rueda para que la columna scrollee.
+    if (nuevo === vista.zoom) return;
+    e.preventDefault();
+    aplicarZoom(nuevo, marco, e.clientX, e.clientY);
+  }, { passive: false });
+
+  marco.addEventListener("dblclick", ajustarVista);
+
+  let arrastrando = false, ultimoX = 0, ultimoY = 0;
+  marco.addEventListener("pointerdown", (e) => {
+    const canvas = marco.querySelector("canvas");
+    if (!canvas || !canvas.width) return;
+    arrastrando = true;
+    ultimoX = e.clientX; ultimoY = e.clientY;
+    marco.setPointerCapture(e.pointerId);
+    marco.classList.add("agarrando");
+  });
+  marco.addEventListener("pointermove", (e) => {
+    if (!arrastrando) return;
+    const rc = marco.querySelector("canvas").getBoundingClientRect();
+    if (rc.width) vista.cx = limitar(vista.cx - (e.clientX - ultimoX) / rc.width, 0, 1);
+    if (rc.height) vista.cy = limitar(vista.cy - (e.clientY - ultimoY) / rc.height, 0, 1);
+    ultimoX = e.clientX; ultimoY = e.clientY;
+    recolocarTodo();
+  });
+  const soltar = (e) => {
+    if (!arrastrando) return;
+    arrastrando = false;
+    marco.classList.remove("agarrando");
+    if (marco.hasPointerCapture(e.pointerId)) marco.releasePointerCapture(e.pointerId);
+  };
+  marco.addEventListener("pointerup", soltar);
+  marco.addEventListener("pointercancel", soltar);
+}
+
+document.querySelectorAll(".visor .marco").forEach(conectarVista);
+$("btn-zoom-mas").addEventListener("click", () => aplicarZoom(vista.zoom * 1.5));
+$("btn-zoom-menos").addEventListener("click", () => aplicarZoom(vista.zoom / 1.5));
+$("btn-zoom-ajustar").addEventListener("click", ajustarVista);
+
 function dibujar(canvas, img) {
   canvas.width = img.ancho;
   canvas.height = img.alto;
   canvas.getContext("2d").putImageData(new ImageData(img.datos, img.ancho), 0, 0);
-  const marco = canvas.parentElement;
-  const maxW = marco.clientWidth - 8, maxH = marco.clientHeight - 8;
-  let escala = Math.min(maxW / img.ancho, maxH / img.alto);
-  if (escala > 1) escala = Math.floor(escala); // ampliar solo a escala entera (píxel nítido)
-  canvas.style.width = Math.max(1, Math.round(img.ancho * escala)) + "px";
-  canvas.style.height = "auto";
+  colocar(canvas);
 }
 
 let temporizador = null;
@@ -1065,15 +1536,22 @@ function refrescarAhora() {
   $("btn-descargar").disabled = !hay;
   $("btn-descargar-zip").disabled = imagenes.length === 0;
   $("out-intensidad").textContent = $("sl-intensidad").value;
+  for (const [campo] of AJUSTES) $("out-ver-" + campo).textContent = $("sl-ver-" + campo).value;
+  $("out-bordes-umbral").textContent = $("sl-bordes-umbral").value;
+  $("out-bordes-influencia").textContent = $("sl-bordes-influencia").value;
+  $("bloque-bordes").classList.toggle("inactiva", !$("chk-bordes").checked);
   for (const c of CANALES) {
     for (const campo of ["brillo", "contraste", "umbral"]) {
       $("out-" + c.clave + "-" + campo).textContent = $("sl-" + c.clave + "-" + campo).value;
     }
     $("mascara-" + c.clave).classList.toggle("inactiva", !$("chk-" + c.clave).checked);
   }
-  for (const [tarjeta, chk] of [["tarjeta-resize", "chk-resize"], ["tarjeta-paleta", "chk-paleta"], ["tarjeta-mascaras", "chk-mascaras"]]) {
+  for (const [tarjeta, chk] of [["tarjeta-resize", "chk-resize"], ["tarjeta-ver", "chk-ver"],
+                                ["tarjeta-paleta", "chk-paleta"], ["tarjeta-mascaras", "chk-mascaras"]]) {
     $(tarjeta).classList.toggle("inactiva", !$(chk).checked);
   }
+  const verVer = $("chk-ver").checked;
+  $("vista-ver").style.display = verVer ? "" : "none";
   const verMascaras = $("chk-mascaras").checked;
   $("vista-mascaras").style.display = verMascaras ? "" : "none";
   $("in-sufijo-mascara").style.display = $("etiqueta-sufijo-mascara").style.display = verMascaras ? "" : "none";
@@ -1081,22 +1559,38 @@ function refrescarAhora() {
   config.opciones = op;
   guardarConfig();
   if (!hay) {
-    for (const id of ["original", "resultado", "mezcla", ...CANALES.map((c) => "m-" + c.clave)]) {
+    for (const id of ["original", "resultado", "mezcla", "ver-color", "ver-bordes", "ver-entrada",
+                      ...CANALES.map((c) => "m-" + c.clave)]) {
       const lienzo = $("canvas-" + id);
       lienzo.width = lienzo.height = 0;
     }
     $("info-original").textContent = "";
     $("info-resultado").textContent = "";
     $("info-mascaras").textContent = "";
+    $("info-ver").textContent = "";
+    $("nivel-zoom").textContent = "";
     return;
   }
   const item = imagenes[indiceActivo];
   dibujar($("canvas-original"), item.original);
   $("info-original").textContent = `${item.nombre} — ${item.original.ancho}×${item.original.alto}`;
-  const resultado = procesar(item.original, op);
+  const salida = procesar(item.original, op);
+  const resultado = salida.imagen;
   dibujar($("canvas-resultado"), resultado);
   const conPaleta = op.repalette && paleta ? ` — ${paleta.colores.length} colores` : "";
-  $("info-resultado").textContent = `${nombreSalida(item.nombre, op.sufijo)} — ${resultado.ancho}×${resultado.alto}${conPaleta}`;
+  $("info-resultado").textContent =
+    `${nombreSalida(item.nombre, op.sufijo)} — ${resultado.ancho}×${resultado.alto}${conPaleta}`;
+
+  if (verVer) {
+    dibujar($("canvas-ver-color"), salida.color);
+    dibujar($("canvas-ver-entrada"), salida.entrada);
+    const lienzoBordes = $("canvas-ver-bordes");
+    // El canal de bordes se mira entero, también fuera de la silueta, así que
+    // va en grises opacos y no hereda el alfa de la imagen.
+    if (salida.bordes) dibujar(lienzoBordes, mapaAImagen(salida.color.ancho, salida.color.alto, salida.bordes));
+    else lienzoBordes.width = lienzoBordes.height = 0;
+    $("info-ver").textContent = textoVer(op, salida);
+  }
 
   if (verMascaras) {
     const m = procesarMascaras(resultado, op);
@@ -1106,12 +1600,18 @@ function refrescarAhora() {
     $("info-mascaras").textContent = nombreSalida(item.nombre, op.sufijoMascara) +
       (apagados.length ? ` — a negro: ${apagados.join(", ")}` : "");
   }
+  recolocarTodo();
 }
 
 /* Cualquier cambio en los controles reprocesa la vista previa */
 document.querySelectorAll("input, select").forEach((el) => {
   el.addEventListener("input", refrescar);
   el.addEventListener("change", refrescar);
+});
+
+$("btn-reset-ajustes").addEventListener("click", () => {
+  for (const [campo] of AJUSTES) $("sl-ver-" + campo).value = 0;
+  refrescar();
 });
 
 $("btn-reset-mascaras").addEventListener("click", () => {
@@ -1154,7 +1654,7 @@ function descargarBlob(blob, nombre) {
 /* Ficheros que salen de una imagen: el diffuse y, si están activas,
    la textura RGB de máscaras. */
 function salidasDe(item, op) {
-  const resultado = procesar(item.original, op);
+  const resultado = procesar(item.original, op).imagen;
   const salidas = [{ nombre: nombreSalida(item.nombre, op.sufijo), img: resultado }];
   if (op.mascaras) {
     salidas.push({
@@ -1213,6 +1713,23 @@ $("btn-descargar-zip").addEventListener("click", async () => {
     $("in-alto").value = op.alto || 64;
     $("chk-proporcion").checked = op.proporcion !== false;
     $("sel-metodo-resize").value = op.metodoResize || "area";
+    $("chk-ver").checked = op.ver !== false;
+    const aj = op.ajustes;
+    if (aj) {
+      $("sl-ver-brillo").value = aj.brillo || 0;
+      $("sl-ver-contraste").value = aj.contraste || 0;
+      $("sl-ver-saturacion").value = aj.saturacion || 0;
+      $("sl-ver-tono").value = aj.tono || 0;
+    }
+    const bo = op.bordes;
+    if (bo) {
+      $("chk-bordes").checked = bo.activos !== false;
+      $("sel-bordes-metodo").value = bo.metodo || "sobel";
+      $("sl-bordes-umbral").value = bo.umbral === undefined ? 24 : bo.umbral;
+      $("chk-bordes-silueta").checked = bo.silueta !== false;
+      $("sel-bordes-modo").value = bo.modo || "oscurecer";
+      $("sl-bordes-influencia").value = bo.influencia === undefined ? 35 : bo.influencia;
+    }
     $("chk-paleta").checked = op.repalette !== false;
     $("sel-metrica").value = op.metrica || "oklab";
     $("sel-dither").value = op.dithering || "ninguno";

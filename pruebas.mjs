@@ -21,7 +21,9 @@ const L = new Function(codigo + `
 return { limitar, hexARgb, rgbAHex, parsearEntradaPaleta, srgbALineal, srgbAOklab,
          prepararPaleta, colorMasCercano, aplicarPaleta, calcularTamanoDestino,
          redimensionarArea, redimensionarVecino, valorFuente, calcularMascara,
-         combinarMascaras, canalAImagen, crc32, crearZip };`)();
+         combinarMascaras, canalAImagen, crc32, crearZip,
+         luminancia, rgbAHsl, hslARgb, ajustarColor, magnitudSobel,
+         detectarBordes, mediaVecindad, mezclarBordes, mapaAImagen };`)();
 
 let total = 0;
 function asegurar(condicion, mensaje) {
@@ -166,6 +168,154 @@ iguales([mezcla.ancho, mezcla.alto], [1, 1], "la mezcla conserva el tamaño");
 
 const canalSuelto = L.canalAImagen(base, new Uint8ClampedArray([77]));
 iguales([...canalSuelto.datos], [77, 77, 77, 200], "un canal suelto se ve en grises y mantiene el alfa");
+
+/* ============================================================
+   ReVer: el canal de color y el canal de bordes
+   Las rejillas son "." transparente y una letra por color, para que una prueba
+   que falla se lea de un vistazo.
+   ============================================================ */
+const PX = { n: [0, 0, 0], o: [255, 255, 255], r: [255, 0, 0], v: [0, 76, 0] };
+
+function rejilla(filas, mapa) {
+  const m = mapa || PX;
+  const alto = filas.length, ancho = filas[0].length;
+  const datos = new Uint8ClampedArray(ancho * alto * 4);
+  for (let y = 0; y < alto; y++) {
+    for (let x = 0; x < ancho; x++) {
+      const ch = filas[y][x];
+      if (ch === ".") continue;
+      const p = (y * ancho + x) * 4, col = m[ch];
+      datos[p] = col[0]; datos[p + 1] = col[1]; datos[p + 2] = col[2]; datos[p + 3] = 255;
+    }
+  }
+  return { ancho, alto, datos };
+}
+
+function aFilas(valores, ancho) {
+  const filas = [];
+  for (let i = 0; i < valores.length; i += ancho) filas.push([...valores.slice(i, i + ancho)]);
+  return filas;
+}
+
+/* --- HSL: la ida y vuelta tiene que devolver el color exacto --- */
+for (const col of [[0, 0, 0], [255, 255, 255], [96, 112, 194], [255, 0, 0], [0, 128, 64], [10, 10, 11]]) {
+  const hsl = L.rgbAHsl(col[0], col[1], col[2]);
+  iguales(L.hslARgb(hsl[0], hsl[1], hsl[2]), col, `rgb→hsl→rgb devuelve ${col} tal cual`);
+}
+iguales(L.rgbAHsl(255, 0, 0)[0], 0, "el rojo puro está en el tono 0");
+iguales(L.rgbAHsl(128, 128, 128)[1], 0, "un gris no tiene saturación");
+iguales(L.hslARgb(0.5, 0, 0.5), [128, 128, 128], "sin saturación sale gris, mire donde mire el tono");
+iguales(L.hslARgb(1.25, 1, 0.5), L.hslARgb(0.25, 1, 0.5), "el tono es circular: 1.25 y 0.25 son el mismo");
+
+/* --- ajustarColor: los sliders clásicos --- */
+const NEUTRO = { brillo: 0, contraste: 0, saturacion: 0, tono: 0 };
+const rojo = imagen(1, 1, [[255, 0, 0, 255]]);
+const grisMedio = imagen(1, 1, [[100, 100, 100, 255]]);
+
+iguales([...L.ajustarColor(imagen(1, 1, [[10, 20, 30, 128]]), NEUTRO).datos], [10, 20, 30, 128],
+  "todo a cero es la identidad, alfa incluido");
+iguales([...L.ajustarColor(grisMedio, { ...NEUTRO, brillo: 20 }).datos], [151, 151, 151, 255], "brillo +20 suma 51");
+iguales([...L.ajustarColor(grisMedio, { ...NEUTRO, brillo: 100 }).datos], [255, 255, 255, 255], "brillo +100 satura a blanco");
+iguales([...L.ajustarColor(grisMedio, { ...NEUTRO, contraste: 100 }).datos], [0, 0, 0, 255],
+  "contraste +100 empuja un gris oscuro al negro");
+iguales([...L.ajustarColor(rojo, { ...NEUTRO, saturacion: -100 }).datos], [128, 128, 128, 255],
+  "saturación -100 deja el gris de la misma luz");
+iguales([...L.ajustarColor(rojo, { ...NEUTRO, tono: 120 }).datos], [0, 255, 0, 255], "tono +120 lleva el rojo al verde");
+iguales([...L.ajustarColor(rojo, { ...NEUTRO, tono: -120 }).datos], [0, 0, 255, 255], "tono -120 lo lleva al azul");
+iguales([...L.ajustarColor(rojo, { ...NEUTRO, tono: 360 }).datos], [255, 0, 0, 255], "una vuelta entera no cambia nada");
+iguales([...L.ajustarColor(imagen(1, 1, [[10, 20, 30, 0]]), { ...NEUTRO, brillo: 100 }).datos], [10, 20, 30, 0],
+  "un píxel transparente no se ajusta: no hay color que ajustar");
+const ajusteConAlfa = L.ajustarColor(imagen(2, 1, [[10, 20, 30, 77], [200, 100, 50, 255]]), { ...NEUTRO, brillo: 30, tono: 40 });
+iguales([ajusteConAlfa.datos[3], ajusteConAlfa.datos[7]], [77, 255], "ajustar el color nunca toca el alfa");
+
+/* --- detectarBordes --- */
+const MITADES = ["nnnooo", "nnnooo", "nnnooo", "nnnooo", "nnnooo"];
+const mitades = rejilla(MITADES);
+const sobel = L.detectarBordes(mitades, { metodo: "sobel", umbral: 0, silueta: false });
+iguales(sobel.length, mitades.ancho * mitades.alto, "el mapa de bordes trae un valor por píxel, no cuatro");
+iguales(aFilas(sobel, 6)[2], [0, 0, 255, 255, 0, 0], "sobel marca las dos columnas del escalón y nada más");
+const lap = L.detectarBordes(mitades, { metodo: "laplaciano", umbral: 0, silueta: false });
+asegurar(lap[2 * 6 + 2] > 0 && lap[2 * 6 + 3] > 0, "el laplaciano también encuentra el escalón");
+iguales([lap[2 * 6 + 0], lap[2 * 6 + 5]], [0, 0], "y deja liso lo que es liso");
+asegurar(lap[2 * 6 + 2] < sobel[2 * 6 + 2], "pero responde menos: por eso es la línea fina");
+
+const liso = rejilla(["oooo", "oooo", "oooo"]);
+iguales([...L.detectarBordes(liso, { metodo: "sobel", umbral: 0, silueta: true })].filter(Boolean).length, 0,
+  "una imagen lisa que llena el lienzo no tiene ni un borde (ni marco por el recorte)");
+
+const conUmbral = L.detectarBordes(mitades, { metodo: "sobel", umbral: 255, silueta: false });
+iguales([...conUmbral].filter((v) => v > 0).length, 6,
+  "el umbral corta en seco: en el escalón solo llegan a 255 las tres filas centrales");
+iguales([...conUmbral].filter((v) => v > 0 && v !== 255).length, 0,
+  "y lo que pasa el corte conserva su fuerza: el umbral no recorta, descarta");
+
+/* Un rojo y un verde de la misma luminancia: el gradiente de luz no los
+   distingue y el de color sí. Es justo para lo que está esa opción. */
+const mismaLuz = rejilla(["rrvv", "rrvv", "rrvv"]);
+iguales([...L.detectarBordes(mismaLuz, { metodo: "sobel", umbral: 0, silueta: false })].filter(Boolean).length, 0,
+  "sobel no ve el salto entre dos colores igual de claros");
+asegurar(L.detectarBordes(mismaLuz, { metodo: "color", umbral: 0, silueta: false })[1 * 4 + 1] > 200,
+  "la diferencia de color sí lo ve");
+
+/* La silueta se mira solo con el alfa: un sprite macizo sobre transparente no
+   tiene bordes de color, pero sí contorno. */
+const CUADRO = ["......", "......", "..oo..", "..oo..", "......", "......"];
+const cuadro = rejilla(CUADRO);
+iguales([...L.detectarBordes(cuadro, { metodo: "sobel", umbral: 0, silueta: false })].filter(Boolean).length, 0,
+  "sin la silueta, un sprite macizo no tiene ningún borde");
+const conSilueta = L.detectarBordes(cuadro, { metodo: "sobel", umbral: 0, silueta: true });
+iguales([conSilueta[2 * 6 + 2], conSilueta[3 * 6 + 3]], [255, 255], "con la silueta, el contorno del sprite sí marca");
+iguales(conSilueta[0], 0, "y lejos del sprite sigue sin haber nada");
+
+/* --- mezclarBordes --- */
+const dosGrises = imagen(2, 1, [[200, 200, 200, 255], [200, 200, 200, 255]]);
+const soloElPrimero = new Uint8ClampedArray([255, 0]);
+iguales([...L.mezclarBordes(dosGrises, soloElPrimero, { modo: "oscurecer", influencia: 0 }).datos],
+  [...dosGrises.datos], "influencia 0 no toca nada");
+iguales([...L.mezclarBordes(dosGrises, soloElPrimero, { modo: "oscurecer", influencia: 50 }).datos],
+  [100, 100, 100, 255, 200, 200, 200, 255], "oscurecer al 50 % baja a la mitad solo donde hay borde");
+iguales([...L.mezclarBordes(dosGrises, soloElPrimero, { modo: "aclarar", influencia: 50 }).datos],
+  [228, 228, 228, 255, 200, 200, 200, 255], "aclarar sube la mitad de lo que le queda hasta el blanco");
+iguales([...L.mezclarBordes(dosGrises, soloElPrimero, { modo: "oscurecer", influencia: 100 }).datos].slice(0, 4),
+  [0, 0, 0, 255], "al 100 % el borde se va al negro");
+
+const transparente = imagen(2, 1, [[200, 200, 200, 0], [200, 200, 200, 255]]);
+iguales([...L.mezclarBordes(transparente, new Uint8ClampedArray([255, 255]), { modo: "oscurecer", influencia: 100 }).datos],
+  [200, 200, 200, 0, 0, 0, 0, 255], "lo transparente se queda como está: el borde solo pinta dentro del sprite");
+
+/* Realce: aleja cada píxel de la media de su vecindad, así que separa los dos
+   lados del borde en vez de pintar una línea encima. */
+const escalon = imagen(3, 1, [[100, 100, 100, 255], [160, 160, 160, 255], [160, 160, 160, 255]]);
+const bordesEscalon = L.detectarBordes(escalon, { metodo: "sobel", umbral: 0, silueta: false });
+const realzado = L.mezclarBordes(escalon, bordesEscalon, { modo: "realce", influencia: 100 });
+asegurar(realzado.datos[0] < 100, "el lado oscuro del escalón se oscurece más");
+asegurar(realzado.datos[4] > 160, "y el claro se aclara: el contraste local sube");
+const media = L.mediaVecindad(escalon);
+iguales([media[0], media[3]], [130, 140], "la media 3×3 solo cuenta los píxeles opacos");
+
+/* --- mapaAImagen: el canal de bordes se mira entero --- */
+const enGrises = L.mapaAImagen(2, 1, new Uint8ClampedArray([40, 200]));
+iguales([...enGrises.datos], [40, 40, 40, 255, 200, 200, 200, 255],
+  "el mapa se ve en grises opacos, también donde la imagen era transparente");
+
+/* --- La promesa del paso: acentuar bordes no inventa colores ---
+   La mezcla ocurre ANTES de RePalette, así que lo que sale sigue estando en la
+   paleta por construcción, por mucho que se fuercen los ajustes. */
+const PALETA = [[0, 0, 0], [255, 255, 255], [255, 0, 0], [0, 76, 0]];
+const fuente = rejilla(["rrvv", "nnoo", "rvno"]);
+const ajustada = L.ajustarColor(fuente, { brillo: 15, contraste: 40, saturacion: 30, tono: 25 });
+const bordesFuente = L.detectarBordes(fuente, { metodo: "color", umbral: 16, silueta: true });
+const entrada = L.mezclarBordes(ajustada, bordesFuente, { modo: "oscurecer", influencia: 80 });
+const palettizada = L.aplicarPaleta(entrada, PALETA, { metrica: "oklab", dithering: "ninguno", intensidad: 100 });
+let fuera = 0;
+for (let p = 0; p < palettizada.datos.length; p += 4) {
+  const dentro = PALETA.some((c) => c[0] === palettizada.datos[p] && c[1] === palettizada.datos[p + 1] &&
+                                    c[2] === palettizada.datos[p + 2]);
+  if (!dentro) fuera++;
+}
+iguales(fuera, 0, "tras acentuar los bordes, todos los píxeles siguen siendo de la paleta");
+asegurar(entrada.datos.some((v, i) => i % 4 !== 3 && v !== ajustada.datos[i]),
+  "y los bordes han cambiado de verdad la imagen que ve RePalette");
 
 /* --- crc32 y crearZip --- */
 const bytes123 = new TextEncoder().encode("123456789");

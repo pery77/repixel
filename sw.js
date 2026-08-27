@@ -1,7 +1,7 @@
 /* Service worker de RePixel.
    Estrategia: red primero (para recibir actualizaciones cuando haya
    conexión) con caché como respaldo (para funcionar 100% offline). */
-const CACHE = "repixel-v1";
+const CACHE = "repixel-v3";
 const NUCLEO = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", (e) => {
