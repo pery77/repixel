@@ -20,6 +20,7 @@ const codigo = html.slice(desde, hasta);
 const L = new Function(codigo + `
 return { limitar, hexARgb, rgbAHex, parsearEntradaPaleta, srgbALineal, srgbAOklab,
          prepararPaleta, colorMasCercano, aplicarPaleta, calcularTamanoDestino,
+         distanciaLab2, elegirColoresBloque, limitarAtributos,
          redimensionarArea, redimensionarVecino, reescalar, recortarAlfa, valorFuente, calcularMascara,
          combinarMascaras, canalAImagen, crc32, crearZip,
          distanciaOklab, colorDeFondo, quitarFondo,
@@ -503,6 +504,95 @@ for (let p = 0; p < palettizada.datos.length; p += 4) {
 iguales(fuera, 0, "tras acentuar los bordes, todos los píxeles siguen siendo de la paleta");
 asegurar(entrada.datos.some((v, i) => i % 4 !== 3 && v !== ajustada.datos[i]),
   "y los bordes han cambiado de verdad la imagen que ve RePalette");
+
+/* ============================================================
+   ReBloques: el clash de atributos
+   ============================================================ */
+const CLASH = { n: [0, 0, 0], g: [10, 10, 10], o: [255, 255, 255], r: [255, 0, 0], a: [0, 0, 255] };
+const SPECTRUM = { ancho: 8, alto: 8, colores: 2, criterio: "error" };
+const coloresDe = (img) => {
+  const vistos = new Set();
+  for (let p = 0; p < img.datos.length; p += 4) {
+    if (img.datos[p + 3] === 0) continue;
+    vistos.add(`${img.datos[p]},${img.datos[p + 1]},${img.datos[p + 2]}`);
+  }
+  return vistos;
+};
+
+/* --- Un bloque que ya cabe no se toca --- */
+const cabe = rejilla(["nnoo", "nnoo"], CLASH);
+const intacto = L.limitarAtributos(cabe, { ...SPECTRUM, ancho: 4, alto: 2 });
+iguales([...intacto.imagen.datos], [...cabe.datos], "dos colores en un bloque de dos: ni se toca");
+iguales([intacto.tocados, intacto.cambiados, intacto.bloques], [0, 0, 1], "y no cuenta como bloque tocado");
+
+/* --- Tres colores en una celda de Spectrum: uno sobra --- */
+const tresColores = rejilla(["nnnnooor", "nnnnooor", "nnnnooor", "nnnnooor",
+                             "nnnnooor", "nnnnooor", "nnnnooor", "nnnnooor"], CLASH);
+const apretado = L.limitarAtributos(tresColores, SPECTRUM);
+iguales(coloresDe(apretado.imagen).size, 2, "en la celda de 8×8 solo sobreviven 2 colores");
+asegurar([...coloresDe(apretado.imagen)].every((c) => coloresDe(tresColores).has(c)),
+  "y los dos salen de los que ya había: ReBloques no inventa colores");
+iguales([apretado.bloques, apretado.tocados], [1, 1], "un bloque, y ha habido que tocarlo");
+
+/* --- La rejilla de bloques manda: cada uno negocia sus colores por su cuenta --- */
+const dosCeldas = rejilla(Array.from({ length: 8 }, () => "nnnnooorrrraaaa"), CLASH);
+const porCeldas = L.limitarAtributos(dosCeldas, SPECTRUM);
+iguales(dosCeldas.ancho, 15, "15 px de ancho: la segunda celda queda a medias, y también cuenta");
+iguales([porCeldas.bloques, coloresDe(porCeldas.imagen).size], [2, 4],
+  "dos celdas × 2 colores = hasta 4 colores en la imagen, aunque en cada una solo quepan 2");
+
+/* --- Bloques no cuadrados: el MSX limita por líneas de 8×1 --- */
+const porLineas = L.limitarAtributos(rejilla(["nnoorraa", "nnnnnnoo"], CLASH),
+                                     { ancho: 8, alto: 1, colores: 2, criterio: "error" });
+iguales(porLineas.bloques, 2, "8×1 sobre una imagen de 8×2 son dos bloques, uno por línea");
+iguales([porLineas.tocados], [1], "la primera línea tiene 4 colores y se recorta; la segunda ya cabía");
+
+/* --- Los transparentes ni gastan cupo ni se tocan --- */
+const conHuecos = rejilla(["nn..", "oo..", "rr..", "aa.."], CLASH);
+const respetados = L.limitarAtributos(conHuecos, { ancho: 4, alto: 4, colores: 3, criterio: "error" });
+iguales(coloresDe(respetados.imagen).size, 3, "hay 4 colores opacos y caben 3: se recorta a 3");
+iguales(alfaDe(respetados.imagen).filter((a) => a === 0).length, 8,
+  "los 8 píxeles transparentes siguen transparentes");
+
+/* --- Los dos criterios eligen distinto, y se nota ---
+   Bloque casi todo negro (5 px), con un negro apenas distinto (4 px) y un
+   brillo blanco (3 px). Solo caben 2 colores:
+   · "los más repetidos" gasta las dos plazas en los dos negros y el brillo
+     desaparece —es el error clásico del conversor ingenuo—;
+   · "menos error" ve que el segundo negro no aporta nada y salva el blanco. */
+const brillo = rejilla(["nnnn", "nggg", "gooo"], CLASH);
+const UN_BLOQUE = { ancho: 4, alto: 3, colores: 2 };
+const porFrecuencia = L.limitarAtributos(brillo, { ...UN_BLOQUE, criterio: "frecuencia" });
+const porError = L.limitarAtributos(brillo, { ...UN_BLOQUE, criterio: "error" });
+asegurar(!coloresDe(porFrecuencia.imagen).has("255,255,255"),
+  "con «los más repetidos» las dos plazas se van a los dos negros y el brillo se pierde");
+asegurar(coloresDe(porError.imagen).has("255,255,255"),
+  "con «menos error» el brillo blanco sobrevive: aporta mucho más que un segundo negro");
+iguales([...coloresDe(porError.imagen)].sort(), ["0,0,0", "255,255,255"],
+  "y las dos plazas quedan en el negro dominante y el blanco");
+
+/* --- elegirColoresBloque a pelo --- */
+const memoLab = new Map();
+const labDe = (k) => {
+  if (!memoLab.has(k)) memoLab.set(k, L.srgbAOklab((k >> 16) & 255, (k >> 8) & 255, k & 255));
+  return memoLab.get(k);
+};
+const censo = new Map([[0x000000, 5], [0x0a0a0a, 4], [0xffffff, 3]]);
+iguales(L.elegirColoresBloque(censo, 2, "frecuencia", labDe), [0x000000, 0x0a0a0a],
+  "por frecuencia salen los dos primeros de la lista ordenada");
+iguales(L.elegirColoresBloque(censo, 2, "error", labDe), [0x000000, 0xffffff],
+  "por error, el dominante y el que más lejos está de él");
+iguales(L.elegirColoresBloque(censo, 9, "error", labDe).length, 3,
+  "no se inventan plazas: con cupo de sobra devuelve los colores que hay");
+asegurar(L.distanciaLab2([1, 0, 0], [0, 0, 0]) === 1, "distanciaLab2 es la distancia al cuadrado");
+
+/* --- La promesa del paso: sigue todo dentro de la paleta --- */
+const PALETA_CLASH = [[0, 0, 0], [255, 255, 255], [255, 0, 0], [0, 0, 255]];
+const rica = L.aplicarPaleta(rejilla(["nora", "arno", "nora", "arno"], CLASH),
+                             PALETA_CLASH, { metrica: "oklab", dithering: "ninguno", intensidad: 100 });
+const conClash = L.limitarAtributos(rica, { ancho: 2, alto: 2, colores: 2, criterio: "error" }).imagen;
+asegurar([...coloresDe(conClash)].every((c) => PALETA_CLASH.some((p) => p.join(",") === c)),
+  "tras el clash todos los píxeles siguen siendo de la paleta: los colores salen del propio bloque");
 
 /* --- crc32 y crearZip --- */
 const bytes123 = new TextEncoder().encode("123456789");

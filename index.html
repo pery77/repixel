@@ -153,6 +153,8 @@
   .boton:active { transform: scale(0.96); }
   .boton:disabled { opacity: 0.4; cursor: default; }
   .boton.primario { background: #3b5bd6; border-color: #4a6ae8; }
+  .boton.activo { background: #3b5bd6; border-color: #4a6ae8; }   /* el preset que está puesto */
+  #tamanos-rapidos .boton { padding: 4px 9px; font-size: 0.82rem; font-variant-numeric: tabular-nums; }
 
   /* Zona de carga */
   #zona-soltar {
@@ -230,12 +232,12 @@
   .visores-mini { display: grid; gap: 8px; margin-top: 8px; }
   .visores-mini h3 { display: flex; align-items: center; gap: 5px; }
   .visores-mini .marco { height: 112px; }
-  #vista-fondo .visores-mini { grid-template-columns: repeat(2, 1fr); }
+  #vista-fondo .visores-mini, #vista-bloques .visores-mini { grid-template-columns: repeat(2, 1fr); }
   #vista-ver .visores-mini { grid-template-columns: repeat(3, 1fr); }
   #vista-mascaras .visores-mini { grid-template-columns: repeat(4, 1fr); }
   @media (max-width: 560px) {
     #vista-ver .visores-mini, #vista-mascaras .visores-mini { grid-template-columns: repeat(2, 1fr); }
-    #vista-fondo .visores-mini { grid-template-columns: 1fr; }
+    #vista-fondo .visores-mini, #vista-bloques .visores-mini { grid-template-columns: 1fr; }
   }
 
   /* Visores */
@@ -277,7 +279,7 @@
 <div id="app">
   <header>
     <h1>RePixel</h1>
-    <p>Reescala, borra el fondo, aplica paletas de Lospec y genera máscaras para tu juego pixel art. Todo se procesa en local.</p>
+    <p>Reescala, borra el fondo, aplica paletas de Lospec, emula el clash de las máquinas de 8 bits y genera máscaras para tu juego pixel art. Todo se procesa en local.</p>
   </header>
 
   <div class="columnas">
@@ -353,6 +355,7 @@
             <input type="number" id="in-ancho" min="1" max="4096" value="64"> ×
             <input type="number" id="in-alto" min="1" max="4096" value="64"> px
           </div>
+          <div class="fila" id="tamanos-rapidos"><label>Rápido</label></div>
           <div class="fila">
             <label><input type="checkbox" id="chk-proporcion" checked> Mantener proporción (encaja dentro)</label>
           </div>
@@ -458,10 +461,46 @@
         </div>
       </div>
 
+      <div class="tarjeta" id="tarjeta-bloques">
+        <label class="cabecera">
+          <input type="checkbox" id="chk-bloques">
+          <span class="paso">5</span><strong>ReBloques</strong>
+        </label>
+        <div class="cuerpo">
+          <div class="nota">El <b>clash de atributos</b> de las máquinas de 8 bits: la imagen se parte en bloques y dentro de cada uno no caben más de N colores, por rica que sea la paleta. Los colores salen de los que ya hay en el bloque, así que viniendo de RePalette la salida sigue estando en la paleta.</div>
+          <div class="fila">
+            <label style="width:78px">Máquina</label>
+            <select id="sel-bloques-maquina">
+              <option value="spectrum">ZX Spectrum — 8×8, 2 colores</option>
+              <option value="msx">MSX SCREEN 2 — 8×1, 2 colores</option>
+              <option value="nes">NES — 16×16, 4 colores</option>
+              <option value="medida">A medida</option>
+            </select>
+          </div>
+          <div class="fila">
+            <label style="width:78px">Bloque</label>
+            <input type="number" id="in-bloques-ancho" min="1" max="256" value="8"> ×
+            <input type="number" id="in-bloques-alto" min="1" max="256" value="8"> px
+          </div>
+          <div class="fila">
+            <label style="width:78px">Colores</label>
+            <input type="number" id="in-bloques-colores" min="1" max="64" value="2"> por bloque
+          </div>
+          <div class="fila">
+            <label style="width:78px">Elegir</label>
+            <select id="sel-bloques-criterio">
+              <option value="error">Los que menos error dejan</option>
+              <option value="frecuencia">Los más repetidos</option>
+            </select>
+          </div>
+          <div class="nota">Con «menos error» un bloque casi todo negro con un brillo blanco se queda el blanco; con «los más repetidos» gastaría la segunda plaza en otro negro y el brillo desaparecería. Los píxeles transparentes ni gastan cupo ni se tocan.</div>
+        </div>
+      </div>
+
       <div class="tarjeta" id="tarjeta-mascaras">
         <label class="cabecera">
           <input type="checkbox" id="chk-mascaras">
-          <span class="paso">5</span><strong>Máscaras RGB</strong>
+          <span class="paso">6</span><strong>Máscaras RGB</strong>
         </label>
         <div class="cuerpo">
           <div class="nota">Una sola textura para el shader: <b>R</b> metallic, <b>G</b> smoothness, <b>B</b> emisivo. Cada canal tiene sus ajustes y se calcula sobre el resultado final, con la paleta ya aplicada.</div>
@@ -537,6 +576,24 @@
         <div class="info" id="info-ver"></div>
       </div>
 
+      <div class="tarjeta" id="vista-bloques" style="margin-top:12px">
+        <div class="fila">
+          <strong>Clash de atributos</strong>
+          <span class="nota">en blanco, cuánto ha mordido cada bloque</span>
+        </div>
+        <div class="visores-mini">
+          <div class="visor">
+            <h3>Sin límite</h3>
+            <div class="marco"><canvas id="canvas-bloques-antes"></canvas></div>
+          </div>
+          <div class="visor">
+            <h3>Bloques tocados</h3>
+            <div class="marco"><canvas id="canvas-bloques-mapa"></canvas></div>
+          </div>
+        </div>
+        <div class="info" id="info-bloques"></div>
+      </div>
+
       <div class="tarjeta" id="vista-mascaras" style="margin-top:12px">
         <div class="fila">
           <strong>Textura de máscaras</strong>
@@ -589,7 +646,7 @@
    ⚠️ Subir VERSION en cada despliegue: se muestra en la esquina
    de estado para verificar qué versión corre el dispositivo.
    ============================================================ */
-const VERSION = "v2026-08-28";
+const VERSION = "v2026-08-28b";
 const MANTENER_PANTALLA = false;
 const PANTALLA_COMPLETA = false;
 
@@ -752,6 +809,129 @@ function aplicarPaleta(img, colores, opciones) {
     }
   }
   return { ancho, alto, datos: salida };
+}
+
+/* --- ReBloques: el "clash de atributos" de las máquinas de 8 bits ---
+   El ZX Spectrum guarda un solo par de colores (INK y PAPER) por cada celda de
+   8×8; la NES, una paleta de 4 por bloque; el MSX en SCREEN 2, dos por cada
+   línea de 8×1. Da igual lo rica que sea la paleta global: dentro de la celda
+   no caben más, y de ahí salen esos bordes con manchas tan reconocibles.
+   Emularlo es partir la imagen en bloques y, en los que se pasan de cupo,
+   quedarse con N colores y remapear el resto a su vecino más cercano.
+   Dos cosas a propósito:
+   · los colores elegidos salen SIEMPRE de los que ya hay en el bloque, así que
+     viniendo de RePalette la salida sigue estando en la paleta por construcción
+     (aquí no se inventa ningún color, igual que en ReVer);
+   · los píxeles transparentes ni gastan cupo ni se tocan: el límite es para el
+     dibujo, no para el fondo que ReFondo ya se ha llevado. */
+
+function distanciaLab2(a, b) {
+  const dL = a[0] - b[0], dA = a[1] - b[1], dB = a[2] - b[2];
+  return dL * dL + dA * dA + dB * dB;
+}
+
+/* Qué colores se queda un bloque que no cabe. censo: Map de color → nº de
+   píxeles; lab: la conversión a OKLab, memorizada por quien llama.
+   · "frecuencia": los más repetidos, que es lo que hace un conversor ingenuo.
+   · "error": el más repetido y, en cada vuelta, el que más error ahorra. Cuesta
+     un poco más y conserva las formas: un bloque casi todo negro con un brillo
+     blanco se queda el blanco, en vez de gastar la segunda plaza en otro negro
+     que no se distingue del primero. */
+function elegirColoresBloque(censo, maximo, criterio, lab) {
+  const lista = [...censo.entries()].map(([clave, cuenta]) => ({ clave, cuenta }));
+  lista.sort((a, b) => b.cuenta - a.cuenta);
+  if (criterio === "frecuencia") return lista.slice(0, maximo).map((c) => c.clave);
+  const labs = lista.map((c) => lab(c.clave));
+  const elegidos = [0];                                   // el más repetido siempre entra
+  const cerca = labs.map((l) => distanciaLab2(l, labs[0])); // error² de cada color con lo ya elegido
+  while (elegidos.length < maximo) {
+    let mejor = -1, mejorAhorro = 0;
+    for (let i = 0; i < lista.length; i++) {
+      if (cerca[i] === 0) continue;   // ya elegido (o idéntico a uno que lo está)
+      let ahorro = 0;
+      for (let j = 0; j < lista.length; j++) {
+        const d = distanciaLab2(labs[j], labs[i]);
+        if (d < cerca[j]) ahorro += lista[j].cuenta * (cerca[j] - d);
+      }
+      if (ahorro > mejorAhorro) { mejorAhorro = ahorro; mejor = i; }
+    }
+    if (mejor < 0) break;   // nadie mejora nada: no gastar plazas de más
+    elegidos.push(mejor);
+    for (let j = 0; j < lista.length; j++) cerca[j] = Math.min(cerca[j], distanciaLab2(labs[j], labs[mejor]));
+  }
+  return elegidos.map((i) => lista[i].clave);
+}
+
+/* op: { ancho, alto, colores, criterio: "error"|"frecuencia" }
+   Devuelve { imagen, mapa, bloques, tocados, cambiados }; mapa es, por píxel,
+   cuánto ha cambiado su bloque (0-255), para poder ver dónde ha mordido. */
+function limitarAtributos(img, op) {
+  const { ancho, alto } = img;
+  const datos = new Uint8ClampedArray(img.datos);
+  const mapa = new Uint8ClampedArray(ancho * alto);
+  const bw = limitar(Math.round((op && op.ancho) || 8), 1, 256);
+  const bh = limitar(Math.round((op && op.alto) || 8), 1, 256);
+  const maximo = limitar(Math.round((op && op.colores) || 2), 1, 256);
+  const criterio = (op && op.criterio) || "error";
+  // OKLab memorizado entre bloques: la paleta se repite por toda la imagen.
+  const memo = new Map();
+  const lab = (clave) => {
+    let l = memo.get(clave);
+    if (!l) { l = srgbAOklab((clave >> 16) & 255, (clave >> 8) & 255, clave & 255); memo.set(clave, l); }
+    return l;
+  };
+  const claveEn = (p) => (img.datos[p] << 16) | (img.datos[p + 1] << 8) | img.datos[p + 2];
+  let bloques = 0, tocados = 0, cambiados = 0;
+  for (let by = 0; by < alto; by += bh) {
+    for (let bx = 0; bx < ancho; bx += bw) {
+      bloques++;
+      const finX = Math.min(bx + bw, ancho), finY = Math.min(by + bh, alto);
+      const censo = new Map();
+      for (let y = by; y < finY; y++) {
+        for (let x = bx; x < finX; x++) {
+          const p = (y * ancho + x) * 4;
+          if (img.datos[p + 3] === 0) continue;
+          const clave = claveEn(p);
+          censo.set(clave, (censo.get(clave) || 0) + 1);
+        }
+      }
+      if (censo.size <= maximo) continue;   // el bloque ya cabe: ni se mira
+      const elegidos = elegirColoresBloque(censo, maximo, criterio, lab);
+      const labsElegidos = elegidos.map(lab);
+      const destino = new Map();
+      const aDonde = (clave) => {
+        let d = destino.get(clave);
+        if (d === undefined) {
+          const l = lab(clave);
+          let mejor = 0, mejorD = Infinity;
+          for (let i = 0; i < labsElegidos.length; i++) {
+            const dd = distanciaLab2(l, labsElegidos[i]);
+            if (dd < mejorD) { mejorD = dd; mejor = i; }
+          }
+          d = elegidos[mejor];
+          destino.set(clave, d);
+        }
+        return d;
+      };
+      let enBloque = 0;
+      for (let y = by; y < finY; y++) {
+        for (let x = bx; x < finX; x++) {
+          const p = (y * ancho + x) * 4;
+          if (img.datos[p + 3] === 0) continue;
+          const d = aDonde(claveEn(p));
+          if (d === claveEn(p)) continue;
+          datos[p] = (d >> 16) & 255; datos[p + 1] = (d >> 8) & 255; datos[p + 2] = d & 255;
+          enBloque++;
+        }
+      }
+      if (!enBloque) continue;
+      tocados++;
+      cambiados += enBloque;
+      const gris = Math.round(255 * enBloque / ((finX - bx) * (finY - by)));
+      for (let y = by; y < finY; y++) for (let x = bx; x < finX; x++) mapa[y * ancho + x] = gris;
+    }
+  }
+  return { imagen: { ancho, alto, datos }, mapa, bloques, tocados, cambiados };
 }
 
 /* --- Reescalado --- */
@@ -1552,6 +1732,30 @@ const FUENTES = [
     </div>`).join("");
 })();
 
+/* Los tamaños de siempre, en botones: escribir el mismo número en dos campos
+   cansa. Van por plantilla desde la constante, igual que las máscaras. */
+const TAMANOS = [8, 16, 32, 64, 128, 256];
+
+(function construirTamanos() {
+  const fila = $("tamanos-rapidos");
+  for (const n of TAMANOS) {
+    const boton = document.createElement("button");
+    boton.type = "button";
+    boton.className = "boton";
+    boton.id = "tam-" + n;
+    boton.textContent = n;
+    boton.title = n + "×" + n + " px";
+    // Con «mantener proporción» esto es el cuadro donde encajar, no el tamaño
+    // final: una imagen apaisada a 64 saldrá 64×36 y eso es lo que se quiere.
+    boton.addEventListener("click", () => {
+      $("in-ancho").value = n;
+      $("in-alto").value = n;
+      refrescar();
+    });
+    fila.appendChild(boton);
+  }
+})();
+
 function leerOpciones() {
   const canales = {};
   for (const c of CANALES) {
@@ -1602,6 +1806,13 @@ function leerOpciones() {
     metrica: $("sel-metrica").value,
     dithering: $("sel-dither").value,
     intensidad: parseInt($("sl-intensidad").value, 10),
+    bloques: {
+      activo: $("chk-bloques").checked,
+      ancho: limitar(parseInt($("in-bloques-ancho").value, 10) || 8, 1, 256),
+      alto: limitar(parseInt($("in-bloques-alto").value, 10) || 8, 1, 256),
+      colores: limitar(parseInt($("in-bloques-colores").value, 10) || 2, 1, 64),
+      criterio: $("sel-bloques-criterio").value,
+    },
     mascaras: $("chk-mascaras").checked,
     canales,
     sufijo: $("in-sufijo").value,
@@ -1643,7 +1854,42 @@ function procesar(original, op) {
       metrica: op.metrica, dithering: op.dithering, intensidad: op.intensidad,
     });
   }
-  return { imagen: img, color, bordes, entrada, fondo };
+  // ReBloques va detrás de RePalette porque cuenta colores ya definitivos, y
+  // los que elige salen del propio bloque: no se sale de la paleta.
+  const sinBloques = img;
+  let bloques = null;
+  if (op.bloques.activo) {
+    bloques = limitarAtributos(img, op.bloques);
+    img = bloques.imagen;
+  }
+  return { imagen: img, color, bordes, entrada, fondo, bloques, sinBloques };
+}
+
+/* Las tres restricciones clásicas. El desplegable no manda: se deduce de los
+   números, así que tocarlos a mano cae solo en "A medida". */
+const MAQUINAS = {
+  spectrum: { ancho: 8, alto: 8, colores: 2 },
+  msx: { ancho: 8, alto: 1, colores: 2 },
+  nes: { ancho: 16, alto: 16, colores: 4 },
+};
+
+function maquinaDe(b) {
+  for (const clave of Object.keys(MAQUINAS)) {
+    const m = MAQUINAS[clave];
+    if (m.ancho === b.ancho && m.alto === b.alto && m.colores === b.colores) return clave;
+  }
+  return "medida";
+}
+
+const CRITERIOS = { error: "menos error", frecuencia: "los más repetidos" };
+
+function textoBloques(op, bloques) {
+  if (!bloques) return "";
+  const b = op.bloques;
+  const porcentaje = bloques.bloques ? Math.round(bloques.tocados * 100 / bloques.bloques) : 0;
+  return `${b.ancho}×${b.alto} · ${b.colores} colores · ${CRITERIOS[b.criterio]} — ` +
+    `${bloques.tocados} de ${bloques.bloques} bloques tocados (${porcentaje} %), ` +
+    `${bloques.cambiados} px cambiados`;
 }
 
 /* Qué ha hecho ReFondo, en una línea: de qué color era el fondo, de dónde ha
@@ -1713,6 +1959,12 @@ const HERRAMIENTAS = [
   { id: "tarjeta-paleta", chk: "chk-paleta",
     resumen: (op) => (paleta ? paleta.nombre : "sin paleta") +
       (op.dithering === "ninguno" ? "" : ` · ${op.dithering === "floyd" ? "Floyd–Steinberg" : "Bayer"}`) },
+  { id: "tarjeta-bloques", chk: "chk-bloques",
+    resumen: (op) => {
+      const maquina = maquinaDe(op.bloques);
+      const nombre = { spectrum: "Spectrum", msx: "MSX", nes: "NES", medida: "a medida" }[maquina];
+      return `${nombre} · ${op.bloques.ancho}×${op.bloques.alto} · ${op.bloques.colores} colores`;
+    } },
   { id: "tarjeta-mascaras", chk: "chk-mascaras",
     resumen: (op) => `${CANALES.filter((c) => op.canales[c.clave].activa).length}/3 canales` },
 ];
@@ -1961,24 +2213,28 @@ function refrescarAhora() {
   }
   for (const [tarjeta, chk] of [["tarjeta-resize", "chk-resize"], ["tarjeta-fondo", "chk-fondo"],
                                 ["tarjeta-ver", "chk-ver"], ["tarjeta-paleta", "chk-paleta"],
-                                ["tarjeta-mascaras", "chk-mascaras"]]) {
+                                ["tarjeta-bloques", "chk-bloques"], ["tarjeta-mascaras", "chk-mascaras"]]) {
     $(tarjeta).classList.toggle("inactiva", !$(chk).checked);
   }
   const verFondo = $("chk-fondo").checked;
   $("vista-fondo").style.display = verFondo ? "" : "none";
+  const verBloques = $("chk-bloques").checked;
+  $("vista-bloques").style.display = verBloques ? "" : "none";
   const verVer = $("chk-ver").checked;
   $("vista-ver").style.display = verVer ? "" : "none";
   const verMascaras = $("chk-mascaras").checked;
   $("vista-mascaras").style.display = verMascaras ? "" : "none";
   $("in-sufijo-mascara").style.display = $("etiqueta-sufijo-mascara").style.display = verMascaras ? "" : "none";
   const op = leerOpciones();
+  for (const n of TAMANOS) $("tam-" + n).classList.toggle("activo", op.ancho === n && op.alto === n);
+  $("sel-bloques-maquina").value = maquinaDe(op.bloques);
   config.opciones = op;
   guardarConfig();
   ordenarPasos(op.fondo.orden !== "despues");
   pintarPliegues(op);
   if (!hay) {
     for (const id of ["original", "resultado", "mezcla", "fondo-mapa", "fondo-sin",
-                      "ver-color", "ver-bordes", "ver-entrada",
+                      "bloques-antes", "bloques-mapa", "ver-color", "ver-bordes", "ver-entrada",
                       ...CANALES.map((c) => "m-" + c.clave)]) {
       const lienzo = $("canvas-" + id);
       lienzo.width = lienzo.height = 0;
@@ -1988,6 +2244,7 @@ function refrescarAhora() {
     $("info-mascaras").textContent = "";
     $("info-ver").textContent = "";
     $("info-fondo").textContent = "";
+    $("info-bloques").textContent = "";
     $("btn-fondo-tomar").disabled = true;
     $("nivel-zoom").textContent = "";
     return;
@@ -2024,6 +2281,14 @@ function refrescarAhora() {
     $("info-ver").textContent = textoVer(op, salida);
   }
 
+  if (verBloques && salida.bloques) {
+    dibujar($("canvas-bloques-antes"), salida.sinBloques);
+    // El mapa se mira entero, también fuera de la silueta: grises opacos.
+    dibujar($("canvas-bloques-mapa"),
+            mapaAImagen(resultado.ancho, resultado.alto, salida.bloques.mapa));
+    $("info-bloques").textContent = textoBloques(op, salida.bloques);
+  }
+
   if (verMascaras) {
     const m = procesarMascaras(resultado, op);
     for (const c of CANALES) dibujar($("canvas-m-" + c.clave), canalAImagen(resultado, m.canales[c.clave]));
@@ -2043,6 +2308,15 @@ document.querySelectorAll("input, select").forEach((el) => {
 
 $("btn-reset-ajustes").addEventListener("click", () => {
   for (const [campo] of AJUSTES) $("sl-ver-" + campo).value = 0;
+  refrescar();
+});
+
+$("sel-bloques-maquina").addEventListener("change", () => {
+  const m = MAQUINAS[$("sel-bloques-maquina").value];
+  if (!m) return;   // "A medida" no toca nada: es donde se cae al editar a mano
+  $("in-bloques-ancho").value = m.ancho;
+  $("in-bloques-alto").value = m.alto;
+  $("in-bloques-colores").value = m.colores;
   refrescar();
 });
 
@@ -2179,6 +2453,14 @@ $("btn-descargar-zip").addEventListener("click", async () => {
     $("sel-dither").value = op.dithering || "ninguno";
     $("sl-intensidad").value = op.intensidad === undefined ? 100 : op.intensidad;
     $("in-sufijo").value = op.sufijo === undefined ? "_rp" : op.sufijo;
+    const bl = op.bloques;
+    if (bl) {
+      $("chk-bloques").checked = !!bl.activo;
+      $("in-bloques-ancho").value = bl.ancho || 8;
+      $("in-bloques-alto").value = bl.alto || 8;
+      $("in-bloques-colores").value = bl.colores || 2;
+      $("sel-bloques-criterio").value = bl.criterio || "error";
+    }
     $("chk-mascaras").checked = !!op.mascaras;
     $("in-sufijo-mascara").value = op.sufijoMascara === undefined ? "_mask" : op.sufijoMascara;
     for (const c of CANALES) {
