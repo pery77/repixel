@@ -20,8 +20,9 @@ const codigo = html.slice(desde, hasta);
 const L = new Function(codigo + `
 return { limitar, hexARgb, rgbAHex, parsearEntradaPaleta, srgbALineal, srgbAOklab,
          prepararPaleta, colorMasCercano, aplicarPaleta, calcularTamanoDestino,
-         redimensionarArea, redimensionarVecino, valorFuente, calcularMascara,
+         redimensionarArea, redimensionarVecino, reescalar, recortarAlfa, valorFuente, calcularMascara,
          combinarMascaras, canalAImagen, crc32, crearZip,
+         distanciaOklab, colorDeFondo, quitarFondo,
          luminancia, rgbAHsl, hslARgb, ajustarColor, magnitudSobel,
          detectarBordes, mediaVecindad, mezclarBordes, mapaAImagen };`)();
 
@@ -170,9 +171,9 @@ const canalSuelto = L.canalAImagen(base, new Uint8ClampedArray([77]));
 iguales([...canalSuelto.datos], [77, 77, 77, 200], "un canal suelto se ve en grises y mantiene el alfa");
 
 /* ============================================================
-   ReVer: el canal de color y el canal de bordes
-   Las rejillas son "." transparente y una letra por color, para que una prueba
-   que falla se lea de un vistazo.
+   Rejillas de prueba
+   "." es transparente y cada letra un color, para que una prueba que falla se
+   lea de un vistazo.
    ============================================================ */
 const PX = { n: [0, 0, 0], o: [255, 255, 255], r: [255, 0, 0], v: [0, 76, 0] };
 
@@ -196,6 +197,192 @@ function aFilas(valores, ancho) {
   for (let i = 0; i < valores.length; i += ancho) filas.push([...valores.slice(i, i + ancho)]);
   return filas;
 }
+
+/* ============================================================
+   ReFondo: averiguar cuál es el fondo y quitarlo
+   ============================================================ */
+const FONDO = { f: [40, 60, 120], s: [220, 40, 40], o: [255, 255, 255],
+                c: [45, 65, 125],   // azul casi idéntico al fondo (d ≈ 0.018)
+                v: [0, 76, 0] };    // verde: lejísimos en color, casi igual de claro
+const SIN_FONDO = { color: null, alcance: "fuera", tolerancia: 0, desvanecer: 0 };
+
+/* --- colorDeFondo: gana el color opaco más repetido del marco --- */
+const soloMarco = rejilla([
+  "fffffffff",
+  "fooooooof",
+  "fooooooof",
+  "fooooooof",
+  "sooooooof",
+  "fooooooof",
+  "fooooooof",
+  "fooooooof",
+  "fffffffff",
+], FONDO);
+iguales(L.colorDeFondo(soloMarco), FONDO.f,
+  "solo vota el marco: el blanco es mayoría en la imagen (49 px) y aun así gana el azul del borde");
+
+iguales(L.colorDeFondo(rejilla(["....", ".oo.", ".oo.", "...."])), null,
+  "sin un solo píxel opaco en el marco no hay color de fondo que deducir");
+iguales(L.colorDeFondo(rejilla(["ffff"], FONDO)), FONDO.f, "una sola fila también tiene marco");
+
+/* --- quitarFondo: qué es "fuera" ---
+   El bloque de 2×2 del centro es del MISMO color que el fondo, pero está
+   encerrado por el sprite: con alcance "fuera" no se toca. */
+const CON_HUECO = [
+  "ffffff",
+  "fssssf",
+  "fsffsf",
+  "fsffsf",
+  "fssssf",
+  "ffffff",
+];
+const conHueco = rejilla(CON_HUECO, FONDO);
+const alfaDe = (img) => [...Array(img.ancho * img.alto)].map((_, i) => img.datos[i * 4 + 3]);
+
+const soloFuera = L.quitarFondo(conHueco, SIN_FONDO);
+iguales(soloFuera.color, FONDO.f, "el color sale del marco sin que se lo digan");
+iguales(soloFuera.quitados, 20, "se van los 20 px del anillo de fuera");
+iguales(soloFuera.imagen.datos[(2 * 6 + 2) * 4 + 3], 255,
+  "el hueco encerrado es del color del fondo pero se queda: no se llega a él desde el borde");
+iguales([...soloFuera.imagen.datos.slice((1 * 6 + 1) * 4, (1 * 6 + 1) * 4 + 4)], [...FONDO.s, 255],
+  "el sprite sale intacto");
+iguales([...soloFuera.imagen.datos.slice(0, 4)], [0, 0, 0, 0],
+  "un píxel que se va se queda además sin color: nada de arrastrar el fondo dentro del PNG");
+iguales([soloFuera.mapa[0], soloFuera.mapa[2 * 6 + 2], soloFuera.mapa[1 * 6 + 1]], [255, 0, 0],
+  "el mapa marca en blanco lo quitado y deja a 0 lo que sobrevive");
+
+const todoElColor = L.quitarFondo(conHueco, { ...SIN_FONDO, alcance: "todo" });
+iguales(todoElColor.quitados, 24, "con alcance «todo» también caen los 4 px del hueco");
+iguales(todoElColor.imagen.datos[(2 * 6 + 2) * 4 + 3], 0, "el hueco encerrado se va");
+
+/* --- Tolerancia: un fondo que no es exactamente el mismo color --- */
+const CASI = ["ffcfff", "fssssf", "ffffff"];
+const casi = rejilla(CASI, FONDO);
+iguales(L.quitarFondo(casi, SIN_FONDO).imagen.datos[2 * 4 + 3], 255,
+  "con tolerancia 0 un azul casi igual (d≈0.018) no cuenta como fondo");
+iguales(L.quitarFondo(casi, { ...SIN_FONDO, tolerancia: 10 }).imagen.datos[2 * 4 + 3], 0,
+  "con tolerancia 10 sí, y el sprite (a d≈0.35 del fondo) sigue lejos");
+iguales(alfaDe(L.quitarFondo(casi, { ...SIN_FONDO, tolerancia: 10 }).imagen).slice(7, 11),
+  [255, 255, 255, 255], "subir la tolerancia hasta ahí no se come el sprite");
+
+/* --- Color a mano: manda sobre lo que diga el marco --- */
+const aMano = L.quitarFondo(conHueco, { ...SIN_FONDO, color: FONDO.s });
+iguales([aMano.color, aMano.quitados], [FONDO.s, 0],
+  "pedir el color del sprite no quita nada: el sprite no toca el borde, así que no hay por dónde entrar");
+
+/* --- Un sprite pegado al borde no es semilla, así que sobrevive --- */
+const PEGADO = ["sfff", "sfff", "sfff"];
+const pegado = L.quitarFondo(rejilla(PEGADO, FONDO), SIN_FONDO);
+iguales(alfaDe(pegado.imagen), [255, 0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0],
+  "la columna de sprite pegada al borde izquierdo se queda entera");
+
+/* --- Desvanecer: el halo pierde alfa en proporción a lo lejos que está ---
+   Sobre negro, dos grises a media distancia y un blanco fuera de la franja. */
+const rampa = imagen(4, 1, [[0, 0, 0, 255], [40, 40, 40, 255], [80, 80, 80, 255], [255, 255, 255, 255]]);
+iguales(alfaDe(L.quitarFondo(rampa, SIN_FONDO).imagen), [0, 255, 255, 255],
+  "con desvanecer 0 el corte es seco: solo se va el negro exacto");
+const suave = alfaDe(L.quitarFondo(rampa, { ...SIN_FONDO, desvanecer: 100 }).imagen);
+iguales([suave[0], suave[3]], [0, 255], "el fondo puro se va del todo y el blanco no se toca");
+asegurar(suave[1] > 0 && suave[1] < suave[2] && suave[2] < 255,
+  `los grises quedan a medio alfa y en orden (obtuve ${suave[1]} y ${suave[2]})`);
+
+/* --- Sin color de fondo que deducir, la imagen sale tal cual --- */
+const nadaQueHacer = L.quitarFondo(rejilla(["....", ".oo.", ".oo.", "...."]), SIN_FONDO);
+iguales([nadaQueHacer.color, nadaQueHacer.quitados], [null, 0], "sin marco opaco no se toca nada");
+
+/* --- reescalar: ReSize de una pieza --- */
+const paraReducir = rejilla(["oooo", "oooo"], FONDO);
+iguales(L.reescalar(paraReducir, { ancho: 4, alto: 2, proporcion: false, metodoResize: "area" }), paraReducir,
+  "si el tamaño ya es el pedido, reescalar devuelve la misma imagen sin copiarla");
+iguales(L.reescalar(paraReducir, { ancho: 2, alto: 1, proporcion: false, metodoResize: "vecino" }).ancho, 2,
+  "y si no, reduce con el método elegido");
+
+/* --- El orden con ReSize importa, y se nota justo en el borde ---
+   Un cuadro de 3×3 que NO encaja en la rejilla del reescalado: al reducir 8×8 a
+   4×4 quedan bloques mitad sprite mitad fondo, que es donde se ve la diferencia.
+
+     · fondo → resize: el fondo desaparece a resolución completa y es el
+       promedio de área quien reparte el alfa. Como ya pondera el color por
+       alfa, cada píxel del contorno sale del color EXACTO del sprite y con el
+       alfa que le toca: antialias correcto.
+     · resize → fondo: el promedio ya ha mezclado sprite y fondo, así que el
+       contorno queda de un color intermedio que no es ninguno de los dos —el
+       fleco— y encima opaco del todo. */
+const OCHO = ["ffffffff", "ffffffff", "ffsssfff", "ffsssfff",
+              "ffsssfff", "ffffffff", "ffffffff", "ffffffff"];
+const A_CUATRO = { ancho: 4, alto: 4, proporcion: false, metodoResize: "area" };
+const original8 = rejilla(OCHO, FONDO);
+const fondoAntes = L.reescalar(L.quitarFondo(original8, SIN_FONDO).imagen, A_CUATRO);
+const fondoDespues = L.quitarFondo(L.reescalar(original8, A_CUATRO), SIN_FONDO).imagen;
+
+const pixeles = (img) => [...Array(img.ancho * img.alto)].map((_, i) =>
+  [...img.datos.slice(i * 4, i * 4 + 4)]);
+const esSprite = (p) => p[0] === FONDO.s[0] && p[1] === FONDO.s[1] && p[2] === FONDO.s[2];
+const esFondo = (p) => p[0] === FONDO.f[0] && p[1] === FONDO.f[1] && p[2] === FONDO.f[2];
+
+const visiblesAntes = pixeles(fondoAntes).filter((p) => p[3] > 0);
+asegurar(visiblesAntes.length > 0 && visiblesAntes.every(esSprite),
+  "quitando el fondo primero, todo lo que se ve es del color exacto del sprite: ni un píxel de fleco");
+asegurar(visiblesAntes.some((p) => p[3] > 0 && p[3] < 255),
+  "y el contorno queda con alfa intermedio, que es el antialias que le toca");
+
+const visiblesDespues = pixeles(fondoDespues).filter((p) => p[3] > 0);
+asegurar(visiblesDespues.some((p) => !esSprite(p) && !esFondo(p)),
+  "quitándolo después queda fleco: píxeles de un color intermedio que no es ni el sprite ni el fondo");
+asegurar(visiblesDespues.every((p) => p[3] === 255),
+  "y encima opacos del todo, porque el reescalado ya había fundido los dos colores en uno");
+
+/* --- recortarAlfa: la silueta se decide de una vez --- */
+const escalera = imagen(5, 1, [[10, 20, 30, 0], [10, 20, 30, 127], [10, 20, 30, 128],
+                               [10, 20, 30, 200], [10, 20, 30, 255]]);
+iguales(alfaDe(L.recortarAlfa(escalera, 128)), [0, 0, 255, 255, 255],
+  "el umbral corta por >=: 127 se cae y 128 se queda opaco del todo");
+iguales(alfaDe(L.recortarAlfa(escalera)), [0, 0, 255, 255, 255],
+  "sin umbral usa OPACO_MINIMO, el mismo 128 que ya decide qué es silueta");
+iguales(alfaDe(L.recortarAlfa(escalera, 255)), [0, 0, 0, 0, 255],
+  "umbral 255: solo sobrevive lo que ya era opaco del todo (silueta al mínimo)");
+iguales(alfaDe(L.recortarAlfa(escalera, 0)), [0, 255, 255, 255, 255],
+  "el umbral se limita a 1: ni con 0 se vuelve opaco lo que era transparente");
+iguales([...L.recortarAlfa(escalera, 128).datos.slice(4, 12)], [0, 0, 0, 0, 10, 20, 30, 255],
+  "lo que se cae se va sin color y lo que se queda conserva el suyo");
+
+/* --- La combinación que buscábamos: ReFondo primero + alfa de 1 bit ---
+   Quitar el fondo antes deja el contorno del color exacto del sprite (solo le
+   falta el alfa entero); el corte se lo da. Al revés no hay corte que valga:
+   el fleco ya está pintado en el color, y volverlo opaco solo lo empeora. */
+const perfecto = L.recortarAlfa(fondoAntes, 128);
+const visiblesPerfecto = pixeles(perfecto).filter((p) => p[3] > 0);
+asegurar(pixeles(perfecto).every((p) => p[3] === 0 || p[3] === 255),
+  "tras el corte no queda ni una semitransparencia");
+asegurar(visiblesPerfecto.length > 0 && visiblesPerfecto.every(esSprite),
+  "y todo lo visible sigue siendo del color exacto del sprite: silueta binaria y limpia");
+
+const remendado = L.recortarAlfa(fondoDespues, 128);
+asegurar(pixeles(remendado).filter((p) => p[3] > 0).some((p) => !esSprite(p) && !esFondo(p)),
+  "en el orden contrario el corte no arregla nada: el fleco sigue ahí, ahora opaco");
+
+/* --- La promesa del paso: quitarlo ANTES cambia lo que ven los siguientes ---
+   Con el fondo puesto, a RePalette le llega el lienzo entero y se gasta un
+   color de la paleta en algo que no se ve. */
+const conFondo = rejilla(["ffff", "fssf", "ffff"], FONDO);
+const limpia = L.quitarFondo(conFondo, SIN_FONDO).imagen;
+iguales(alfaDe(limpia).filter((a) => a > 0).length, 2,
+  "a RePalette solo le llega el sprite: el fondo ya no gasta un color de la paleta");
+
+/* Y un sprite verde sobre fondo azul es un salto de color enorme (d ≈ 0.20)
+   pero casi el mismo brillo (60 contra 54): con el fondo puesto, Sobel no ve
+   nada. Quitándolo antes, el contorno sale solo de la silueta del alfa. */
+const camuflado = rejilla(["ffff", "fvvf", "ffff"], FONDO);
+const BORDES_SILUETA = { metodo: "sobel", umbral: 24, silueta: true };
+const marcados = (m) => [...m].filter((v) => v > 0).length;
+const sinQuitar = L.detectarBordes(camuflado, BORDES_SILUETA);
+const yaQuitado = L.detectarBordes(L.quitarFondo(camuflado, { ...SIN_FONDO, tolerancia: 10 }).imagen, BORDES_SILUETA);
+asegurar(marcados(sinQuitar) === 0 && marcados(yaQuitado) > 0,
+  "sobre el fondo no había borde que ver; sin él, la silueta lo marca sola");
+
+/* ============================================================
+   ReVer: el canal de color y el canal de bordes
+   ============================================================ */
 
 /* --- HSL: la ida y vuelta tiene que devolver el color exacto --- */
 for (const col of [[0, 0, 0], [255, 255, 255], [96, 112, 194], [255, 0, 0], [0, 128, 64], [10, 10, 11]]) {
