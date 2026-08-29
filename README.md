@@ -1,6 +1,6 @@
 # RePixel
 
-Herramienta web (PWA, un solo `index.html` sin dependencias) para preparar assets de un juego pixel art. Carga una imagen o una carpeta entera y aplica un pipeline de seis pasos opcionales:
+Herramienta web (PWA, sin dependencias ni build) para preparar assets de un juego pixel art. Carga una imagen o una carpeta entera y aplica un pipeline de seis pasos opcionales:
 
 1. **ReFondo** — borra el fondo liso que suele traer el pixel art generado por IA. Primero hay que averiguar **cuál es**: por defecto gana el color opaco más repetido del *marco* de 1 px del lienzo (y se puede fijar a mano, o copiar el detectado al selector para retocarlo). Y luego **qué es «fuera»**: por defecto, lo que se alcanza desde el borde del lienzo sin salir de ese color (relleno por inundación a 4 vecinos), así que ese mismo color *dentro* del dibujo —un ojo, un hueco cerrado— no se borra; con alcance «todo» sí, esté donde esté. La comparación es distancia **OKLab** con tolerancia regulable, y **desvanecer** hace que los píxeles a medio camino entre el fondo y el dibujo (el halo que deja el promedio de área al reescalar) pierdan alfa en proporción en vez de quedarse enteros. Va antes de ReVer y de RePalette a propósito: el fondo no debe contar como borde ni gastar un color de la paleta. **El orden con ReSize se elige** (selector «Cuándo»), y no da igual: por defecto ReFondo va **primero**, a resolución completa, porque así el color se busca donde el fondo todavía es plano y es después el promedio de área —que ya pondera el color por alfa— quien reparte el alfa del contorno, con lo que el borde sale del color exacto del sprite y con antialias correcto. Puesto **después**, trabaja sobre la imagen ya suavizada (mejor si el fondo trae ruido o degradado, y más rápido: recorre 64×64 en vez de la imagen entera), pero el reescalado ya ha fundido sprite y fondo en un fleco opaco que hay que comerse con «desvanecer». Al cambiarlo, **las dos tarjetas y sus números se intercambian en la columna**: si el número no coincidiera con el orden real, la pantalla estaría mintiendo. El resto del pipeline no se reordena, y es a propósito — ReVer tiene que ir antes de RePalette (es su promesa) y las máscaras se calculan sobre el resultado final.
 2. **ReSize** — reduce al tamaño elegido (por defecto 64×64). Botones de tamaño rápido (8, 16, 32, 64, 128 y 256) para no escribir el mismo número en dos campos. Métodos: promedio de área (cobertura fraccionaria y ponderado por alfa, el mejor para reducir fotos/renders) o vecino más cercano (para pixel art ya limpio). Trae además **alfa de 1 bit** (activo por defecto): el promedio de área reparte alfa fraccionaria por el contorno —bonito de mirar, pero un sprite de juego la quiere binaria, que el corte ya lo hace el shader—, así que cada píxel entra en la silueta o no entra, con un umbral regulable que la adelgaza o la engorda. Se aplica al final de ReSize + ReFondo, así que no quedan semitransparencias vengan de donde vengan.
@@ -33,15 +33,18 @@ node pruebas.mjs
 
 ## Versión
 
-**⚠️ Sube `VERSION`** (inicio del script de `index.html`) en cada despliegue: se muestra en la esquina inferior derecha y es la forma rápida de saber qué versión corre el dispositivo.
+**⚠️ Sube `VERSION`** (inicio de `app.js`) en cada despliegue: se muestra en la esquina inferior derecha y es la forma rápida de saber qué versión corre el dispositivo.
 
 ## Estructura
 
 ```
 repixel/
-├── index.html            # La app completa (autocontenida); la lógica pura va entre marcadores
-├── pruebas.mjs           # Tests en Node de la lógica pura (extrae el bloque de index.html)
-├── sw.js                 # Service worker: red primero, caché de respaldo (CACHE "repixel-v3")
+├── index.html            # Solo el HTML: la pantalla y las tres etiquetas
+├── estilos.css           # Todos los estilos
+├── logica.js             # Lógica pura, sin DOM: es lo que se testea
+├── app.js                # Todo lo que toca el navegador (se carga después de logica.js)
+├── pruebas.mjs           # Tests en Node de logica.js
+├── sw.js                 # Service worker: red primero, caché de respaldo (CACHE "repixel-v4")
 ├── manifest.webmanifest  # Instalable como PWA
 ├── icon-192.png          # Iconos (de relleno: regenerar con genera-iconos.html)
 ├── icon-512.png

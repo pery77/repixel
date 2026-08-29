@@ -1,0 +1,309 @@
+/* Estilos de RePixel.
+   La pantalla es de dos columnas que scrollean por su cuenta, y dentro de cada
+   una las tarjetas se reparten en cuantas columnas quepan (con "columns"), que
+   es lo que hace que la app se ajuste al ancho de la ventana. */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  background: #10141c;
+  color: #e8ecf4;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+/* La página en sí no scrollea: quien scrollea es la columna de herramientas. */
+body { overflow: hidden; }
+
+/* Sin ancho máximo: la app ocupa la ventana entera. En una pantalla ancha lo
+   que sobraba a los lados no era aire de diseño, era scroll de más. */
+#app {
+  height: 100vh;
+  height: 100dvh;
+  padding: 16px 18px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Título y descripción en la misma línea mientras quepan: ancho hay, lo que
+   escasea es alto. */
+header { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+header h1 { font-size: 1.5rem; letter-spacing: 0.5px; }
+header p  { color: #8b96ad; font-size: 0.9rem; }
+
+.columnas {
+  flex: 1;
+  min-height: 0;   /* imprescindible: sin esto la rejilla crece y no hay scroll interno */
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  gap: 14px;
+  align-items: stretch;
+}
+
+/* Pantalla ancha: la columna de herramientas se ensancha por tramos y sus
+   tarjetas se reparten solas en las sub-columnas que quepan. El resto del
+   ancho se lo queda la vista previa, que es a lo que se mira. */
+@media (min-width: 1700px) { .columnas { grid-template-columns: 732px 1fr; } }
+@media (min-width: 2400px) { .columnas { grid-template-columns: 1104px 1fr; } }
+
+/* Cada columna scrollea por su cuenta: mover las herramientas no mueve la vista previa. */
+.columna-herramientas, .columna-vista { min-height: 0; overflow-y: auto; }
+.columna-herramientas {
+  padding-right: 8px;              /* aire para la barra de scroll */
+  overscroll-behavior: contain;    /* al llegar al final no arrastra la página */
+  scrollbar-width: thin;
+  scrollbar-color: #2c3648 transparent;
+}
+.columna-herramientas::-webkit-scrollbar { width: 10px; }
+.columna-herramientas::-webkit-scrollbar-track { background: transparent; }
+.columna-herramientas::-webkit-scrollbar-thumb {
+  background: #2c3648;
+  border-radius: 6px;
+  border: 2px solid #10141c;
+}
+.columna-herramientas::-webkit-scrollbar-thumb:hover { background: #3a4866; }
+
+/* La columna de vista: la principal arriba, los visores de cada paso debajo y
+   la descarga al final. */
+.columna-vista { display: flex; flex-direction: column; gap: 12px; }
+
+/* La vista principal se queda todo el alto que sobre (sin bajar de su mínimo):
+   si en la pantalla cabe más, el sprite se ve más grande en vez de dejar hueco. */
+.vista-principal { flex: 1 1 auto; display: flex; flex-direction: column; }
+.vista-principal .visores { flex: 1 1 auto; }
+.vista-principal .visor { display: flex; flex-direction: column; }
+.vista-principal .visor .marco {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: clamp(220px, 30vh, 460px);
+}
+
+/* Los visores de cada paso, en cuantas columnas quepan: en pantalla ancha se
+   ven a la vez en vez de uno debajo de otro. Columnas y no rejilla porque las
+   tarjetas no miden lo mismo y una rejilla alinea cada fila con la más alta. */
+.vistas-extra { columns: 380px; column-gap: 12px; }
+.vistas-extra > .tarjeta { margin-bottom: 12px; }
+
+/* En pantalla estrecha las columnas se apilan y vuelve el scroll normal de página. */
+@media (max-width: 860px) {
+  body { overflow: auto; }
+  #app { height: auto; padding-bottom: 40px; }
+  .columnas { grid-template-columns: 1fr; }
+  .columna-herramientas, .columna-vista { overflow: visible; padding-right: 0; }
+}
+
+.tarjeta {
+  background: #1b2230;
+  border: 1px solid #2c3648;
+  border-radius: 12px;
+  padding: 12px;
+  break-inside: avoid;   /* una tarjeta no se parte entre dos sub-columnas */
+}
+
+.tarjeta > .cabecera {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+.cabecera strong { font-size: 1.02rem; }
+.cabecera .paso {
+  background: #26304a;
+  color: #9fb0d0;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  padding: 2px 6px;
+  font-weight: 700;
+}
+.cabecera input[type="checkbox"] { width: 17px; height: 17px; accent-color: #5b8cff; }
+
+.tarjeta .cuerpo { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.tarjeta.inactiva .cuerpo { opacity: 0.4; pointer-events: none; }
+
+/* Plegar herramientas: con seis tarjetas la columna ya no cabe de una vez.
+   Plegada, cada una resume su ajuste en la propia cabecera, así que se puede
+   trabajar con todas cerradas sin perder de vista cómo están. */
+.tarjeta.plegada > .cuerpo { display: none; }
+.cabecera .resumen {
+  margin-left: auto;                 /* empuja resumen y chevrón a la derecha */
+  color: #55617a;
+  font-size: 0.78rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.boton.plegar {
+  flex: 0 0 auto;
+  padding: 2px 8px;
+  font-size: 0.8rem;
+  color: #9fb0d0;
+  background: transparent;
+  border-color: transparent;
+}
+.boton.plegar:hover { background: #26304a; border-color: #2c3648; }
+#barra-herramientas { margin-bottom: 12px; }
+
+/* Las tarjetas se reparten en tantas sub-columnas como quepan (el navegador
+   decide la cuenta a partir del ancho), y el contenedor va con altura
+   automática: si tuviera altura fija, lo que no cabe no scrollearía hacia
+   abajo, se iría en columnas hacia el lado. */
+.tarjetas { columns: 330px; column-gap: 12px; }
+.tarjetas > .tarjeta { margin-bottom: 12px; }
+
+.fila { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.fila label { color: #b7c1d6; font-size: 0.86rem; }
+.fila output { color: #e8ecf4; font-size: 0.86rem; min-width: 34px; text-align: right; }
+.nota { font-size: 0.78rem; color: #55617a; }
+
+input[type="text"], input[type="number"], select {
+  background: #10141c;
+  border: 1px solid #2c3648;
+  border-radius: 8px;
+  color: #e8ecf4;
+  padding: 6px 8px;
+  font-size: 0.9rem;
+}
+input[type="number"] { width: 70px; }
+input[type="text"] { flex: 1; min-width: 120px; }
+input[type="range"] { flex: 1; accent-color: #5b8cff; min-width: 90px; }
+input[type="checkbox"] { accent-color: #5b8cff; }
+
+.boton {
+  border: 1px solid #2c3648;
+  border-radius: 8px;
+  background: #26304a;
+  color: #e8ecf4;
+  font-weight: 600;
+  font-size: 0.9rem;
+  padding: 7px 14px;
+  cursor: pointer;
+  transition: transform 0.07s ease-out;
+}
+.boton:active { transform: scale(0.96); }
+.boton:disabled { opacity: 0.4; cursor: default; }
+.boton.primario { background: #3b5bd6; border-color: #4a6ae8; }
+.boton.activo { background: #3b5bd6; border-color: #4a6ae8; }   /* el preset que está puesto */
+#tamanos-rapidos .boton { padding: 4px 9px; font-size: 0.82rem; font-variant-numeric: tabular-nums; }
+
+/* Zona de carga */
+#zona-soltar {
+  border: 2px dashed #3a4866;
+  border-radius: 10px;
+  padding: 18px 12px;
+  text-align: center;
+  color: #8b96ad;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+#zona-soltar.encima { border-color: #5b8cff; color: #cfe0ff; background: #1e2a44; }
+
+#lista-miniaturas { display: flex; flex-wrap: wrap; gap: 6px; }
+#lista-miniaturas:empty { display: none; }
+.miniatura {
+  width: 52px; height: 52px;
+  border: 2px solid #2c3648;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  background: repeating-conic-gradient(#242c3d 0% 25%, #1a2130 0% 50%) 0 0 / 12px 12px;
+  display: grid; place-items: center;
+}
+.miniatura.activa { border-color: #5b8cff; }
+.miniatura img { max-width: 100%; max-height: 100%; image-rendering: pixelated; display: block; }
+
+/* Paleta */
+#muestras-paleta { display: flex; flex-wrap: wrap; gap: 3px; }
+#muestras-paleta span {
+  width: 20px; height: 20px;
+  border-radius: 4px;
+  border: 1px solid rgba(255,255,255,0.15);
+}
+#nombre-paleta { color: #9fb0d0; font-size: 0.84rem; }
+#nombre-paleta:empty, #muestras-paleta:empty, #paletas-recientes:empty { display: none; }
+#paletas-recientes { display: flex; flex-wrap: wrap; gap: 5px; }
+#paletas-recientes button {
+  background: #10141c; border: 1px solid #2c3648; color: #9fb0d0;
+  border-radius: 6px; padding: 3px 8px; font-size: 0.78rem; cursor: pointer;
+}
+
+/* Máscaras */
+.canal {
+  display: inline-grid; place-items: center;
+  width: 17px; height: 17px;
+  border-radius: 5px;
+  font-size: 0.68rem; font-weight: 700;
+  color: #0b0e14;
+}
+.canal.r { background: #ff7a7a; }
+.canal.g { background: #6fe39a; }
+.canal.b { background: #7aa6ff; }
+
+/* Bloque de ajustes dentro de una tarjeta: los dos canales de ReVer y las
+   tres máscaras se dibujan igual. */
+#bloques-mascaras { display: flex; flex-direction: column; gap: 8px; }
+.bloque {
+  background: #161c28;
+  border: 1px solid #2c3648;
+  border-radius: 10px;
+  padding: 8px 9px;
+}
+.bloque .cabecera-bloque {
+  display: flex; align-items: center; gap: 7px;
+  user-select: none;
+  font-size: 0.92rem;
+}
+label.cabecera-bloque { cursor: pointer; }   /* solo la cabecera con casilla */
+.bloque .cabecera-bloque input[type="checkbox"] { width: 15px; height: 15px; accent-color: #5b8cff; }
+.bloque .cuerpo-bloque { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+.bloque.inactiva .cuerpo-bloque { opacity: 0.4; pointer-events: none; }
+
+/* Filas de visores pequeños bajo la vista principal: los que quepan por fila,
+   que la tarjeta puede estar sola a lo ancho o compartiendo fila con otras. */
+.visores-mini {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(min(96px, 100%), 1fr));
+}
+@media (max-width: 640px) {
+  .visores-mini { grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr)); }
+}
+.visores-mini h3 { display: flex; align-items: center; gap: 5px; }
+/* Hace falta la clase de más: con `.visores-mini .marco` a secas empataba con
+   `.visor .marco` y ganaba la altura del visor grande. */
+.visores-mini .visor .marco { height: clamp(110px, 14vh, 190px); }
+
+/* Visores */
+.visores { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 560px) { .visores { grid-template-columns: 1fr; } }
+.visor h3 { font-size: 0.85rem; color: #8b96ad; font-weight: 600; margin-bottom: 6px; }
+/* El marco recorta y el lienzo se coloca a mano dentro: el zoom y el paneo los
+   lleva el estado de vista compartido, no el scroll del navegador. La altura
+   la pone cada sitio: elástica en la vista principal, fija en los pequeños. */
+.visor .marco {
+  border: 1px solid #2c3648;
+  border-radius: 10px;
+  position: relative;
+  overflow: hidden;
+  background: repeating-conic-gradient(#242c3d 0% 25%, #1a2130 0% 50%) 0 0 / 16px 16px;
+  touch-action: none;   /* arrastrar dentro del marco panea, no scrollea */
+  cursor: grab;
+}
+.visor .marco.agarrando { cursor: grabbing; }
+.visor canvas { image-rendering: pixelated; display: block; position: absolute; }
+
+#nivel-zoom { color: #9fb0d0; font-variant-numeric: tabular-nums; min-width: 76px; }
+#controles-zoom .boton { padding: 4px 10px; }
+.visor .info { color: #55617a; font-size: 0.78rem; margin-top: 4px; min-height: 1em; }
+
+#aviso { color: #ffb86b; font-size: 0.85rem; min-height: 1.1em; margin-top: 6px; }
+
+#estado {
+  position: fixed;
+  right: 8px;
+  bottom: 6px;
+  font-size: 0.75rem;
+  color: #55617a;
+}

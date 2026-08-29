@@ -1,21 +1,14 @@
 /* Pruebas de la lógica pura de RePixel.
    Ejecutar:  node pruebas.mjs
-   Extrae el bloque entre los marcadores "LÓGICA PURA" de index.html
-   y lo ejecuta en Node sin DOM. Lanza excepción si algo falla. */
+   Carga logica.js entero y lo ejecuta en Node sin DOM (ese fichero no toca el
+   navegador, por eso está aparte). Lanza excepción si algo falla. */
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 const raiz = dirname(fileURLToPath(import.meta.url));
-const html = readFileSync(join(raiz, "index.html"), "utf8");
-
-const marcaIni = html.indexOf("LÓGICA PURA — INICIO");
-const marcaFin = html.indexOf("LÓGICA PURA — FIN");
-if (marcaIni < 0 || marcaFin < 0) throw new Error("No encuentro los marcadores de LÓGICA PURA en index.html");
-const desde = html.indexOf("*/", marcaIni) + 2;
-const hasta = html.lastIndexOf("/*", marcaFin);
-const codigo = html.slice(desde, hasta);
+const codigo = readFileSync(join(raiz, "logica.js"), "utf8");
 
 const L = new Function(codigo + `
 return { limitar, numeroDeCampo, leerRuta, escribirRuta,
