@@ -184,6 +184,10 @@ input[type="checkbox"] { accent-color: #5b8cff; }
   transition: transform 0.07s ease-out;
 }
 .boton:active { transform: scale(0.96); }
+/* Un botón de icono es cuadrado y el dibujo manda; lo que hace lo dice su title. */
+.boton svg { width: 18px; height: 18px; display: block; }
+.boton.icono { padding: 7px 9px; }
+.boton.plegar svg { width: 15px; height: 15px; }
 .boton:disabled { opacity: 0.4; cursor: default; }
 .boton.primario { background: #3b5bd6; border-color: #4a6ae8; }
 .boton.activo { background: #3b5bd6; border-color: #4a6ae8; }   /* el preset que está puesto */

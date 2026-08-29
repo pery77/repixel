@@ -30,7 +30,7 @@
       <div class="fila" id="barra-herramientas">
         <strong data-i18n="herr.titulo"></strong>
         <span style="flex:1"></span>
-        <button class="boton" id="btn-plegar-todo"></button>
+        <button class="boton icono" id="btn-plegar-todo"></button>
       </div>
 
       <div class="tarjetas">
@@ -39,9 +39,9 @@
           <div class="cuerpo">
             <div id="zona-soltar" data-i18n="img.soltar"></div>
             <div class="fila">
-              <button class="boton" id="btn-archivos" data-i18n="img.archivos" data-i18n-title="img.archivosTitulo"></button>
-              <button class="boton" id="btn-carpeta" data-i18n="img.carpeta" data-i18n-title="img.carpetaTitulo"></button>
-              <button class="boton" id="btn-limpiar" data-i18n="img.vaciar" data-i18n-title="img.vaciarTitulo"></button>
+              <button class="boton icono" id="btn-archivos" data-icono="imagenes" data-i18n-title="img.archivosTitulo"></button>
+              <button class="boton icono" id="btn-carpeta" data-icono="carpeta" data-i18n-title="img.carpetaTitulo"></button>
+              <button class="boton icono" id="btn-limpiar" data-icono="vaciar" data-i18n-title="img.vaciarTitulo"></button>
             </div>
             <input type="file" id="input-archivos" accept="image/*" multiple hidden>
             <input type="file" id="input-carpeta" webkitdirectory hidden>
@@ -71,7 +71,7 @@
                 <option value="manual" data-i18n="fondo.manual"></option>
               </select>
               <input type="color" id="in-fondo-color" value="#000000" data-i18n-title="fondo.colorTitulo">
-              <button class="boton" id="btn-fondo-tomar" data-i18n="fondo.tomar" data-i18n-title="fondo.tomarTitulo"></button>
+              <button class="boton icono" id="btn-fondo-tomar" data-icono="cuentagotas" data-i18n-title="fondo.tomarTitulo"></button>
             </div>
             <div class="fila">
               <label style="width:78px" data-i18n="fondo.alcance"></label>
@@ -134,7 +134,7 @@
                 <div class="fila"><label style="width:78px" data-i18n="ver.contraste"></label><input type="range" id="sl-ver-contraste" min="-100" max="100" value="0"><output id="out-ver-contraste">0</output></div>
                 <div class="fila"><label style="width:78px" data-i18n="ver.saturacion"></label><input type="range" id="sl-ver-saturacion" min="-100" max="100" value="0"><output id="out-ver-saturacion">0</output></div>
                 <div class="fila"><label style="width:78px" data-i18n="ver.tono"></label><input type="range" id="sl-ver-tono" min="-180" max="180" value="0"><output id="out-ver-tono">0</output></div>
-                <div class="fila"><button class="boton" id="btn-reset-ajustes" data-i18n="ver.restablecer" data-i18n-title="ver.restablecerTitulo"></button></div>
+                <div class="fila"><button class="boton icono" id="btn-reset-ajustes" data-icono="restablecer" data-i18n-title="ver.restablecerTitulo"></button></div>
               </div>
             </div>
 
@@ -176,10 +176,10 @@
           <div class="cuerpo">
             <div class="fila">
               <input type="text" id="in-paleta" data-i18n-ph="paleta.entrada" spellcheck="false">
-              <button class="boton" id="btn-cargar-paleta" data-i18n="paleta.cargar" data-i18n-title="paleta.cargarTitulo"></button>
+              <button class="boton icono" id="btn-cargar-paleta" data-icono="descargar" data-i18n-title="paleta.cargarTitulo"></button>
             </div>
             <div class="fila">
-              <button class="boton" id="btn-paleta-archivo" data-i18n="paleta.archivo" data-i18n-title="paleta.archivoTitulo"></button>
+              <button class="boton icono" id="btn-paleta-archivo" data-icono="archivo" data-i18n-title="paleta.archivoTitulo"></button>
               <span class="nota" data-i18n="paleta.formatos"></span>
             </div>
             <input type="file" id="input-paleta" accept=".gpl,.pal,.hex,.txt,.act,.png,.gif,.bmp,.webp,image/*" hidden>
@@ -252,7 +252,7 @@
           <div class="cuerpo">
             <div class="nota" data-i18n="mascaras.nota"></div>
             <div id="bloques-mascaras"></div>
-            <div class="fila"><button class="boton" id="btn-reset-mascaras" data-i18n="mascaras.restablecer" data-i18n-title="mascaras.restablecerTitulo"></button></div>
+            <div class="fila"><button class="boton icono" id="btn-reset-mascaras" data-icono="restablecer" data-i18n-title="mascaras.restablecerTitulo"></button></div>
           </div>
         </div>
       </div>
@@ -263,9 +263,9 @@
       <div class="tarjeta vista-principal">
         <div class="fila" id="controles-zoom">
           <strong data-i18n="vista.titulo"></strong>
-          <button class="boton" id="btn-zoom-menos" data-i18n-title="vista.alejar">−</button>
-          <button class="boton" id="btn-zoom-mas" data-i18n-title="vista.acercar">+</button>
-          <button class="boton" id="btn-zoom-ajustar" data-i18n="vista.ajustar" data-i18n-title="vista.ajustarTitulo"></button>
+          <button class="boton icono" id="btn-zoom-menos" data-icono="zoomMenos" data-i18n-title="vista.alejar"></button>
+          <button class="boton icono" id="btn-zoom-mas" data-icono="zoomMas" data-i18n-title="vista.acercar"></button>
+          <button class="boton icono" id="btn-zoom-ajustar" data-icono="ajustar" data-i18n-title="vista.ajustarTitulo"></button>
           <span class="nota" id="nivel-zoom"></span>
           <span style="flex:1"></span>
           <span class="nota" data-i18n="vista.ayuda"></span>
@@ -376,8 +376,8 @@
           <label id="etiqueta-sufijo-mascara" data-i18n="salida.sufijoMascara"></label>
           <input type="text" id="in-sufijo-mascara" value="_mask" style="flex:0 0 auto;width:84px" spellcheck="false">
           <span style="flex:1"></span>
-          <button class="boton primario" id="btn-descargar" data-i18n="salida.descargar" data-i18n-title="salida.descargarTitulo" disabled></button>
-          <button class="boton primario" id="btn-descargar-zip" data-i18n="salida.zip" data-i18n-title="salida.zipTitulo" disabled></button>
+          <button class="boton primario icono" id="btn-descargar" data-icono="descargar" data-i18n-title="salida.descargarTitulo" disabled></button>
+          <button class="boton primario icono" id="btn-descargar-zip" data-icono="zip" data-i18n-title="salida.zipTitulo" disabled></button>
         </div>
         <div id="aviso"></div>
       </div>

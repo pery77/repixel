@@ -12,7 +12,7 @@
    ⚠️ Subir VERSION en cada despliegue: se muestra en la esquina
    de estado para verificar qué versión corre el dispositivo.
    ============================================================ */
-const VERSION = "v2026-08-30";
+const VERSION = "v2026-08-30b";
 const MANTENER_PANTALLA = false;
 const PANTALLA_COMPLETA = false;
 
@@ -82,6 +82,50 @@ function aplicarIdioma() {
     pintarPaleta();
     refrescarAhora();   // resúmenes, líneas de info y nivel de zoom
   });
+})();
+
+/* ============================================================
+   Iconos
+   Un puñado de SVG a trazo, dibujados con primitivas para que no haya que
+   descifrar rutas: van en línea (sin fuente ni dependencia que cargar) y en
+   currentColor, así que siguen el color del botón. Lo que dice cada uno va en
+   su title, que sí está traducido.
+   ============================================================ */
+const ICONOS = {
+  imagenes: '<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/>' +
+            '<polyline points="4,18 10,12 14,16 17,13 20,16"/>',
+  carpeta: '<path d="M3 7a2 2 0 0 1 2-2h3.5l2 2H19a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  vaciar: '<line x1="4" y1="7" x2="20" y2="7"/><path d="M9 7V5h6v2"/>' +
+          '<path d="M6.5 7 7.5 19a2 2 0 0 0 2 2h5a2 2 0 0 0 2-2L17.5 7"/>',
+  cuentagotas: '<path d="M20 4a2.5 2.5 0 0 0-3.5 0L14 6.5 17.5 10 20 7.5A2.5 2.5 0 0 0 20 4z"/>' +
+               '<path d="M14 6.5 5 15.5V19h3.5l9-9"/>',
+  descargar: '<line x1="12" y1="4" x2="12" y2="14"/><polyline points="8,10 12,14 16,10"/>' +
+             '<path d="M4 17v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2"/>',
+  archivo: '<path d="M13 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9z"/>' +
+           '<polyline points="13,3 13,9 19,9"/>',
+  zip: '<rect x="3" y="4" width="18" height="4" rx="1"/>' +
+       '<path d="M5 8h14v11a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1z"/><line x1="10" y1="13" x2="14" y2="13"/>',
+  restablecer: '<path d="M20 12a8 8 0 1 1-2.4-5.7"/><polyline points="20,4 20,9.5 14.5,9.5"/>',
+  zoomMenos: '<circle cx="11" cy="11" r="6"/><line x1="8.5" y1="11" x2="13.5" y2="11"/>' +
+             '<line x1="15.5" y1="15.5" x2="20" y2="20"/>',
+  zoomMas: '<circle cx="11" cy="11" r="6"/><line x1="8.5" y1="11" x2="13.5" y2="11"/>' +
+           '<line x1="11" y1="8.5" x2="11" y2="13.5"/><line x1="15.5" y1="15.5" x2="20" y2="20"/>',
+  ajustar: '<polyline points="9,4 4,4 4,9"/><polyline points="15,4 20,4 20,9"/>' +
+           '<polyline points="20,15 20,20 15,20"/><polyline points="4,15 4,20 9,20"/>',
+  plegarTodo: '<polyline points="7,10 12,5 17,10"/><polyline points="7,19 12,14 17,19"/>',
+  desplegarTodo: '<polyline points="7,5 12,10 17,5"/><polyline points="7,14 12,19 17,14"/>',
+  plegar: '<polyline points="6,9 12,15 18,9"/>',
+  desplegar: '<polyline points="9,6 15,12 9,18"/>',
+};
+
+function icono(nombre) {
+  return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+         'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICONOS[nombre] + "</svg>";
+}
+
+/* Los iconos se ponen una vez: no dependen del idioma. */
+(function aplicarIconos() {
+  for (const el of document.querySelectorAll("[data-icono]")) el.innerHTML = icono(el.dataset.icono);
 })();
 
 function avisar(texto) {
@@ -670,15 +714,16 @@ function pintarPliegues(op) {
   for (const herramienta of HERRAMIENTAS) {
     const plegada = !!estado[herramienta.id];
     $(herramienta.id).classList.toggle("plegada", plegada);
-    herramienta.boton.textContent = plegada ? "▸" : "▾";
+    herramienta.boton.innerHTML = icono(plegada ? "desplegar" : "plegar");
     herramienta.boton.title = t(plegada ? "herr.desplegar" : "herr.plegar");
     // El resumen solo tiene sentido plegada: desplegada ya se ven los controles.
     $("resumen-" + herramienta.id).textContent = !plegada ? ""
       : herramienta.chk && !$(herramienta.chk).checked ? t("herr.apagado")
       : herramienta.resumen(op);
   }
-  $("btn-plegar-todo").textContent =
-    t(HERRAMIENTAS.some((h) => !estado[h.id]) ? "herr.plegarTodo" : "herr.desplegarTodo");
+  const quedaAlgunaAbierta = HERRAMIENTAS.some((h) => !estado[h.id]);
+  $("btn-plegar-todo").innerHTML = icono(quedaAlgunaAbierta ? "plegarTodo" : "desplegarTodo");
+  $("btn-plegar-todo").title = t(quedaAlgunaAbierta ? "herr.plegarTodo" : "herr.desplegarTodo");
 }
 
 /* ReFondo y ReSize se intercambian de verdad en la columna: si el número del
@@ -1065,7 +1110,7 @@ $("btn-descargar-zip").addEventListener("click", async () => {
   if (!imagenes.length) return;
   const boton = $("btn-descargar-zip");
   boton.disabled = true;
-  const textoOriginal = boton.textContent;
+  const contenidoOriginal = boton.innerHTML;
   const op = leerOpciones();
   const archivos = [];
   const usados = new Map();
@@ -1084,7 +1129,7 @@ $("btn-descargar-zip").addEventListener("click", async () => {
     const zip = crearZip(archivos);
     descargarBlob(new Blob([zip], { type: "application/zip" }), "repixel.zip");
   } finally {
-    boton.textContent = textoOriginal;
+    boton.innerHTML = contenidoOriginal;
     boton.disabled = false;
   }
 });
