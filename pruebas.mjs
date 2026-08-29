@@ -18,7 +18,8 @@ const hasta = html.lastIndexOf("/*", marcaFin);
 const codigo = html.slice(desde, hasta);
 
 const L = new Function(codigo + `
-return { limitar, hexARgb, rgbAHex, parsearEntradaPaleta, srgbALineal, srgbAOklab,
+return { limitar, numeroDeCampo, leerRuta, escribirRuta,
+         hexARgb, rgbAHex, parsearEntradaPaleta, srgbALineal, srgbAOklab,
          prepararPaleta, colorMasCercano, aplicarPaleta, calcularTamanoDestino,
          distanciaLab2, elegirColoresBloque, limitarAtributos,
          redimensionarArea, redimensionarVecino, reescalar, recortarAlfa, valorFuente, calcularMascara,
@@ -610,5 +611,33 @@ const crcEnZip = zip[14] | (zip[15] << 8) | (zip[16] << 16) | ((zip[17] << 24) >
 asegurar((crcEnZip >>> 0) === crcEsperado, "crc32 escrito en la cabecera local");
 const zip2 = L.crearZip([{ nombre: "a.png", datos: contenido }, { nombre: "b.png", datos: bytes123 }]);
 iguales(zip2[zip2.length - 12] | (zip2[zip2.length - 11] << 8), 2, "el fin de directorio cuenta 2 archivos");
+
+/* --- numeroDeCampo: lo que se lee de un campo de texto ---
+   El valor por defecto y los topes los pone el HTML (defaultValue, min, max),
+   así que aquí solo se comprueba la regla: número si lo hay, defecto si no, y
+   siempre dentro de los topes. */
+iguales(L.numeroDeCampo("42", 8, 0, 100), 42, "un número se lee tal cual");
+iguales(L.numeroDeCampo("", 8, 0, 100), 8, "campo vacío: manda el valor por defecto");
+iguales(L.numeroDeCampo("bicho", 8, 0, 100), 8, "campo con letras: manda el valor por defecto");
+iguales(L.numeroDeCampo("500", 8, 0, 100), 100, "por arriba se recorta al tope");
+iguales(L.numeroDeCampo("-7", 8, 0, 100), 0, "por abajo también");
+iguales(L.numeroDeCampo("0", 64, 1, 4096), 1, "el cero es un número: se recorta, no se descarta");
+iguales(L.numeroDeCampo("-30", 0, -180, 180), -30, "los topes pueden ser negativos");
+
+/* --- leerRuta / escribirRuta: la lista de controles es plana, las opciones no --- */
+const arbol = { ancho: 64, fondo: { tolerancia: 8 } };
+iguales(L.leerRuta(arbol, "ancho"), 64, "ruta de un solo paso");
+iguales(L.leerRuta(arbol, "fondo.tolerancia"), 8, "ruta anidada");
+iguales(L.leerRuta(arbol, "fondo.nada"), undefined, "lo que no está es undefined");
+iguales(L.leerRuta(arbol, "nada.de.nada"), undefined, "y no revienta a medio camino");
+
+const destino = {};
+L.escribirRuta(destino, "ancho", 32);
+L.escribirRuta(destino, "canales.metallic.brillo", 20);
+L.escribirRuta(destino, "canales.metallic.activa", true);
+iguales(destino, { ancho: 32, canales: { metallic: { brillo: 20, activa: true } } },
+  "escribir crea los objetos que faltan y respeta los que ya hay");
+L.escribirRuta(destino, "canales.metallic.brillo", 0);
+iguales(L.leerRuta(destino, "canales.metallic.brillo"), 0, "y sobreescribe con un cero sin confundirlo con vacío");
 
 console.log(`OK — ${total} comprobaciones superadas.`);

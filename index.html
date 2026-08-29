@@ -691,7 +691,7 @@
    ⚠️ Subir VERSION en cada despliegue: se muestra en la esquina
    de estado para verificar qué versión corre el dispositivo.
    ============================================================ */
-const VERSION = "v2026-08-29";
+const VERSION = "v2026-08-29b";
 const MANTENER_PANTALLA = false;
 const PANTALLA_COMPLETA = false;
 
@@ -703,6 +703,36 @@ const PANTALLA_COMPLETA = false;
    ============================================================ */
 
 function limitar(v, min, max) { return v < min ? min : v > max ? max : v; }
+
+/* El número que hay escrito en un campo: si no hay ninguno (vacío, letras), el
+   que se pase por defecto, y siempre dentro de los topes. */
+function numeroDeCampo(texto, defecto, min, max) {
+  const n = parseInt(texto, 10);
+  return limitar(Number.isNaN(n) ? defecto : n, min, max);
+}
+
+/* Leer y escribir por ruta ("fondo.tolerancia"), creando de paso los objetos
+   que falten al escribir. Es lo que permite que la lista de controles sea
+   plana aunque las opciones estén anidadas. */
+function leerRuta(obj, ruta) {
+  let nodo = obj;
+  for (const paso of ruta.split(".")) {
+    if (nodo === undefined || nodo === null) return undefined;
+    nodo = nodo[paso];
+  }
+  return nodo;
+}
+
+function escribirRuta(obj, ruta, valor) {
+  const pasos = ruta.split(".");
+  let nodo = obj;
+  for (const paso of pasos.slice(0, -1)) {
+    if (typeof nodo[paso] !== "object" || nodo[paso] === null) nodo[paso] = {};
+    nodo = nodo[paso];
+  }
+  nodo[pasos[pasos.length - 1]] = valor;
+  return obj;
+}
 
 function hexARgb(hex) {
   const h = String(hex).trim().replace(/^#/, "");
@@ -1801,68 +1831,129 @@ const TAMANOS = [8, 16, 32, 64, 128, 256];
   }
 })();
 
-function leerOpciones() {
-  const canales = {};
-  for (const c of CANALES) {
-    canales[c.clave] = {
-      activa: $("chk-" + c.clave).checked,
-      fuente: $("sel-" + c.clave + "-fuente").value,
-      brillo: parseInt($("sl-" + c.clave + "-brillo").value, 10),
-      contraste: parseInt($("sl-" + c.clave + "-contraste").value, 10),
-      invertir: $("chk-" + c.clave + "-invertir").checked,
-      umbral: $("chk-" + c.clave + "-umbral").checked ? parseInt($("sl-" + c.clave + "-umbral").value, 10) : null,
-    };
+/* ============================================================
+   Los controles, en una sola lista
+   Cada control aparece aquí una vez, con la ruta que ocupa dentro de las
+   opciones. El tipo, el valor por defecto y los topes salen del propio HTML
+   (`type`, `defaultValue`/`defaultChecked`, `min`/`max`), así que el atributo
+   de la etiqueta es la única fuente de la verdad: leerOpciones recorre esta
+   lista en un sentido, restaurar en el otro y los botones de restablecer se
+   apoyan en ella. Un ajuste nuevo es un control en el HTML y una fila aquí.
+   ============================================================ */
+const CONTROLES = [
+  ["chk-resize",           "resize"],
+  ["in-ancho",             "ancho"],
+  ["in-alto",              "alto"],
+  ["chk-proporcion",       "proporcion"],
+  ["sel-metodo-resize",    "metodoResize"],
+  ["chk-alfa-dura",        "alfaDura"],
+  ["sl-alfa-umbral",       "alfaUmbral"],
+
+  ["chk-fondo",            "fondo.activo"],
+  ["sel-fondo-orden",      "fondo.orden"],
+  // El desplegable dice "auto"/"manual" y las opciones guardan un booleano.
+  ["sel-fondo-color",      "fondo.auto", { aDato: (v) => v === "auto",
+                                           aControl: (d) => (d ? "auto" : "manual") }],
+  ["in-fondo-color",       "fondo.hex"],
+  ["sel-fondo-alcance",    "fondo.alcance"],
+  ["sl-fondo-tolerancia",  "fondo.tolerancia"],
+  ["sl-fondo-desvanecer",  "fondo.desvanecer"],
+
+  ["chk-ver",              "ver"],
+  ["sl-ver-brillo",        "ajustes.brillo"],
+  ["sl-ver-contraste",     "ajustes.contraste"],
+  ["sl-ver-saturacion",    "ajustes.saturacion"],
+  ["sl-ver-tono",          "ajustes.tono"],
+
+  ["chk-bordes",           "bordes.activos"],
+  ["sel-bordes-metodo",    "bordes.metodo"],
+  ["sl-bordes-umbral",     "bordes.umbral"],
+  ["chk-bordes-silueta",   "bordes.silueta"],
+  ["sel-bordes-modo",      "bordes.modo"],
+  ["sl-bordes-influencia", "bordes.influencia"],
+
+  ["chk-paleta",           "repalette"],
+  ["sel-metrica",          "metrica"],
+  ["sel-dither",           "dithering"],
+  ["sl-intensidad",        "intensidad"],
+
+  ["chk-bloques",          "bloques.activo"],
+  ["in-bloques-ancho",     "bloques.ancho"],
+  ["in-bloques-alto",      "bloques.alto"],
+  ["in-bloques-colores",   "bloques.colores"],
+  ["sel-bloques-criterio", "bloques.criterio"],
+
+  ["chk-mascaras",         "mascaras"],
+  ["in-sufijo",            "sufijo"],
+  ["in-sufijo-mascara",    "sufijoMascara"],
+];
+
+// Los tres canales de máscara tienen los mismos seis controles: se generan
+// igual que su HTML, desde CANALES.
+for (const c of CANALES) {
+  CONTROLES.push(
+    ["chk-" + c.clave,               `canales.${c.clave}.activa`],
+    ["sel-" + c.clave + "-fuente",   `canales.${c.clave}.fuente`],
+    ["sl-" + c.clave + "-brillo",    `canales.${c.clave}.brillo`],
+    ["sl-" + c.clave + "-contraste", `canales.${c.clave}.contraste`],
+    ["chk-" + c.clave + "-invertir", `canales.${c.clave}.invertir`],
+    ["sl-" + c.clave + "-umbral",    `canales.${c.clave}.umbral`],
+    // Dos controles para un solo dato: la casilla dice si hay umbral y el
+    // deslizador cuál. La casilla no guarda nada suyo —si hay número guardado
+    // va marcada, y si no lo hay (null) la salta el bucle de restaurar—, así
+    // que lo que queda en localStorage es lo mismo de siempre.
+    ["chk-" + c.clave + "-umbral",   `canales.${c.clave}.umbral`,
+                                     { soloRestaurar: true, aControl: () => true }],
+  );
+}
+
+/* Lo que vale un control ahora mismo, con el tipo, los topes y el valor por
+   defecto que declara su propia etiqueta. */
+function valorDeControl(el) {
+  if (el.type === "checkbox") return el.checked;
+  if (el.type === "number" || el.type === "range") {
+    return numeroDeCampo(el.value, parseInt(el.defaultValue, 10) || 0,
+                         el.min === "" ? -Infinity : +el.min,
+                         el.max === "" ? Infinity : +el.max);
   }
-  return {
-    resize: $("chk-resize").checked,
-    ancho: limitar(parseInt($("in-ancho").value, 10) || 64, 1, 4096),
-    alto: limitar(parseInt($("in-alto").value, 10) || 64, 1, 4096),
-    proporcion: $("chk-proporcion").checked,
-    metodoResize: $("sel-metodo-resize").value,
-    alfaDura: $("chk-alfa-dura").checked,
-    alfaUmbral: limitar(parseInt($("sl-alfa-umbral").value, 10) || OPACO_MINIMO, 1, 255),
-    fondo: {
-      activo: $("chk-fondo").checked,
-      orden: $("sel-fondo-orden").value,
-      auto: $("sel-fondo-color").value === "auto",
-      hex: $("in-fondo-color").value,
-      // null = que lo averigüe quitarFondo votando el marco
-      color: $("sel-fondo-color").value === "auto" ? null : hexARgb($("in-fondo-color").value),
-      alcance: $("sel-fondo-alcance").value,
-      tolerancia: limitar(parseInt($("sl-fondo-tolerancia").value, 10) || 0, 0, 100),
-      desvanecer: limitar(parseInt($("sl-fondo-desvanecer").value, 10) || 0, 0, 100),
-    },
-    ver: $("chk-ver").checked,
-    ajustes: {
-      brillo: parseInt($("sl-ver-brillo").value, 10) || 0,
-      contraste: parseInt($("sl-ver-contraste").value, 10) || 0,
-      saturacion: parseInt($("sl-ver-saturacion").value, 10) || 0,
-      tono: parseInt($("sl-ver-tono").value, 10) || 0,
-    },
-    bordes: {
-      activos: $("chk-bordes").checked,
-      metodo: $("sel-bordes-metodo").value,
-      umbral: limitar(parseInt($("sl-bordes-umbral").value, 10) || 0, 0, 255),
-      silueta: $("chk-bordes-silueta").checked,
-      modo: $("sel-bordes-modo").value,
-      influencia: limitar(parseInt($("sl-bordes-influencia").value, 10) || 0, 0, 100),
-    },
-    repalette: $("chk-paleta").checked,
-    metrica: $("sel-metrica").value,
-    dithering: $("sel-dither").value,
-    intensidad: parseInt($("sl-intensidad").value, 10),
-    bloques: {
-      activo: $("chk-bloques").checked,
-      ancho: limitar(parseInt($("in-bloques-ancho").value, 10) || 8, 1, 256),
-      alto: limitar(parseInt($("in-bloques-alto").value, 10) || 8, 1, 256),
-      colores: limitar(parseInt($("in-bloques-colores").value, 10) || 2, 1, 64),
-      criterio: $("sel-bloques-criterio").value,
-    },
-    mascaras: $("chk-mascaras").checked,
-    canales,
-    sufijo: $("in-sufijo").value,
-    sufijoMascara: $("in-sufijo-mascara").value,
-  };
+  return el.value;
+}
+
+function ponerControl(el, valor) {
+  if (el.type === "checkbox") el.checked = !!valor;
+  else el.value = valor;
+}
+
+/* Devolver un control a lo que dice el HTML. Los <select> no llevan atributo
+   `selected`, así que su valor por defecto es el de la primera opción. */
+function restablecerControl(el) {
+  if (el.type === "checkbox") el.checked = el.defaultChecked;
+  else if (el.tagName === "SELECT") el.value = ([...el.options].find((o) => o.defaultSelected) || el.options[0]).value;
+  else el.value = el.defaultValue;
+}
+
+/* Restablece de golpe una rama entera de las opciones ("ajustes", "canales"). */
+function restablecerRama(prefijo) {
+  for (const [id, ruta] of CONTROLES) {
+    if (ruta === prefijo || ruta.startsWith(prefijo + ".")) restablecerControl($(id));
+  }
+}
+
+function leerOpciones() {
+  const op = {};
+  for (const [id, ruta, mapa] of CONTROLES) {
+    if (mapa && mapa.soloRestaurar) continue;
+    const v = valorDeControl($(id));
+    escribirRuta(op, ruta, mapa && mapa.aDato ? mapa.aDato(v) : v);
+  }
+  // Lo que no sale de un control suelto: el color de fondo a mano (null = que
+  // lo vote quitarFondo mirando el marco) y el umbral de cada máscara, que es
+  // null si su casilla no está marcada (así lo lee calcularMascara).
+  op.fondo.color = op.fondo.auto ? null : hexARgb(op.fondo.hex);
+  for (const c of CANALES) {
+    if (!$("chk-" + c.clave + "-umbral").checked) op.canales[c.clave].umbral = null;
+  }
+  return op;
 }
 
 function procesar(original, op) {
@@ -2354,7 +2445,7 @@ document.querySelectorAll("input, select").forEach((el) => {
 });
 
 $("btn-reset-ajustes").addEventListener("click", () => {
-  for (const [campo] of AJUSTES) $("sl-ver-" + campo).value = 0;
+  restablecerRama("ajustes");
   refrescar();
 });
 
@@ -2368,15 +2459,7 @@ $("sel-bloques-maquina").addEventListener("change", () => {
 });
 
 $("btn-reset-mascaras").addEventListener("click", () => {
-  for (const c of CANALES) {
-    $("chk-" + c.clave).checked = true;
-    $("sel-" + c.clave + "-fuente").value = "luminancia";
-    $("sl-" + c.clave + "-brillo").value = 0;
-    $("sl-" + c.clave + "-contraste").value = 0;
-    $("chk-" + c.clave + "-invertir").checked = false;
-    $("chk-" + c.clave + "-umbral").checked = false;
-    $("sl-" + c.clave + "-umbral").value = 128;
-  }
+  restablecerRama("canales");
   refrescar();
 });
 
@@ -2461,65 +2544,12 @@ $("btn-descargar-zip").addEventListener("click", async () => {
 (function restaurar() {
   const op = config.opciones;
   if (op) {
-    $("chk-resize").checked = op.resize !== false;
-    $("in-ancho").value = op.ancho || 64;
-    $("in-alto").value = op.alto || 64;
-    $("chk-proporcion").checked = op.proporcion !== false;
-    $("sel-metodo-resize").value = op.metodoResize || "area";
-    $("chk-alfa-dura").checked = op.alfaDura !== false;
-    $("sl-alfa-umbral").value = op.alfaUmbral === undefined ? 128 : op.alfaUmbral;
-    const fo = op.fondo;
-    if (fo) {
-      $("chk-fondo").checked = !!fo.activo;
-      $("sel-fondo-orden").value = fo.orden === "despues" ? "despues" : "antes";
-      $("sel-fondo-color").value = fo.auto === false ? "manual" : "auto";
-      if (fo.hex) $("in-fondo-color").value = fo.hex;
-      $("sel-fondo-alcance").value = fo.alcance || "fuera";
-      $("sl-fondo-tolerancia").value = fo.tolerancia === undefined ? 8 : fo.tolerancia;
-      $("sl-fondo-desvanecer").value = fo.desvanecer === undefined ? 0 : fo.desvanecer;
-    }
-    $("chk-ver").checked = op.ver !== false;
-    const aj = op.ajustes;
-    if (aj) {
-      $("sl-ver-brillo").value = aj.brillo || 0;
-      $("sl-ver-contraste").value = aj.contraste || 0;
-      $("sl-ver-saturacion").value = aj.saturacion || 0;
-      $("sl-ver-tono").value = aj.tono || 0;
-    }
-    const bo = op.bordes;
-    if (bo) {
-      $("chk-bordes").checked = bo.activos !== false;
-      $("sel-bordes-metodo").value = bo.metodo || "sobel";
-      $("sl-bordes-umbral").value = bo.umbral === undefined ? 24 : bo.umbral;
-      $("chk-bordes-silueta").checked = bo.silueta !== false;
-      $("sel-bordes-modo").value = bo.modo || "oscurecer";
-      $("sl-bordes-influencia").value = bo.influencia === undefined ? 35 : bo.influencia;
-    }
-    $("chk-paleta").checked = op.repalette !== false;
-    $("sel-metrica").value = op.metrica || "oklab";
-    $("sel-dither").value = op.dithering || "ninguno";
-    $("sl-intensidad").value = op.intensidad === undefined ? 100 : op.intensidad;
-    $("in-sufijo").value = op.sufijo === undefined ? "_rp" : op.sufijo;
-    const bl = op.bloques;
-    if (bl) {
-      $("chk-bloques").checked = !!bl.activo;
-      $("in-bloques-ancho").value = bl.ancho || 8;
-      $("in-bloques-alto").value = bl.alto || 8;
-      $("in-bloques-colores").value = bl.colores || 2;
-      $("sel-bloques-criterio").value = bl.criterio || "error";
-    }
-    $("chk-mascaras").checked = !!op.mascaras;
-    $("in-sufijo-mascara").value = op.sufijoMascara === undefined ? "_mask" : op.sufijoMascara;
-    for (const c of CANALES) {
-      const m = op.canales && op.canales[c.clave];
-      if (!m) continue;
-      $("chk-" + c.clave).checked = m.activa !== false;
-      $("sel-" + c.clave + "-fuente").value = m.fuente || "luminancia";
-      $("sl-" + c.clave + "-brillo").value = m.brillo || 0;
-      $("sl-" + c.clave + "-contraste").value = m.contraste || 0;
-      $("chk-" + c.clave + "-invertir").checked = !!m.invertir;
-      $("chk-" + c.clave + "-umbral").checked = m.umbral !== null && m.umbral !== undefined;
-      if (m.umbral !== null && m.umbral !== undefined) $("sl-" + c.clave + "-umbral").value = m.umbral;
+    for (const [id, ruta, mapa] of CONTROLES) {
+      const v = leerRuta(op, ruta);
+      // Lo que no se guardó —o se guardó a null, como el umbral de una máscara
+      // sin marcar— lo dice el HTML: no se toca el control y manda su atributo.
+      if (v === undefined || v === null) continue;
+      ponerControl($(id), mapa ? mapa.aControl(v) : v);
     }
   }
   if (config.paletaEntrada) $("in-paleta").value = config.paletaEntrada;

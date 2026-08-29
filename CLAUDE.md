@@ -17,6 +17,7 @@ Descarga PNG suelto o ZIP (escritor ZIP "store" propio, sin dependencias); con m
 - **Nada sensible en el repo**: ni emails reales, ni rutas con datos personales, ni claves. Todo lo que se commitea se asume público.
 - **Todo en español**: código, comentarios, commits y UI (nombres de funciones y variables incluidos).
 - **`index.html` autocontenido**: sin dependencias, sin build, sin frameworks. Si crece demasiado, antes de dividir en archivos, plantéalo.
+- **Un control, una fila en `CONTROLES`**: la lista de controles existe una sola vez y `leerOpciones` la recorre en un sentido y `restaurar` en el otro. El tipo, los topes y el **valor por defecto** salen del propio HTML (`type`, `min`/`max`, `defaultValue`/`defaultChecked`), así que el atributo de la etiqueta es la única fuente de la verdad y los botones de restablecer solo tienen que devolver el control a lo que dice el HTML. Añadir un ajuste es el control en el HTML y su fila aquí, nada más.
 - **Cero scroll** en la pantalla principal cuando la app sea de tipo "panel": todo cabe en una pantalla.
 - **⚠️ Subir la constante `VERSION`** (inicio del script de `index.html`) en cada despliegue: se muestra en la esquina de estado para verificar qué versión corre el dispositivo.
 - **`localStorage` con prefijo propio de la app** (p. ej. `miapp_datos`) y lectura tolerante a fallos (`try/catch` + valor por defecto).
