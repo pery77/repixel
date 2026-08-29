@@ -54,6 +54,22 @@ function rgbAHex(rgb) {
   return "#" + rgb.map((c) => c.toString(16).padStart(2, "0")).join("");
 }
 
+/* Un texto de la interfaz: se busca la clave en el idioma puesto y, si no está,
+   en el de respaldo, así que un idioma a medio traducir enseña el resto en el
+   de por defecto en vez de huecos. Si tampoco está, sale la propia clave —que
+   se vea qué falta—. Dentro del texto, {hueco} se sustituye con los datos y
+   "singular|plural" elige forma según el dato {n}. */
+function traducir(textos, respaldo, clave, datos) {
+  let s = textos && textos[clave] !== undefined ? textos[clave] : (respaldo || {})[clave];
+  if (s === undefined) return clave;
+  if (s.indexOf("|") >= 0) {
+    const formas = s.split("|");
+    s = datos && Number(datos.n) === 1 ? formas[0] : formas[1];
+  }
+  if (!datos) return s;
+  return s.replace(/\{(\w+)\}/g, (todo, hueco) => (datos[hueco] === undefined ? todo : datos[hueco]));
+}
+
 /* Acepta: URL de Lospec (https://lospec.com/palette-list/slug), un slug
    suelto, o una lista de códigos hex separados por espacios/comas/saltos. */
 function parsearEntradaPaleta(texto) {

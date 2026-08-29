@@ -12,7 +12,7 @@
    ⚠️ Subir VERSION en cada despliegue: se muestra en la esquina
    de estado para verificar qué versión corre el dispositivo.
    ============================================================ */
-const VERSION = "v2026-08-29d";
+const VERSION = "v2026-08-30";
 const MANTENER_PANTALLA = false;
 const PANTALLA_COMPLETA = false;
 
@@ -36,6 +36,53 @@ function guardarRecientes() {
 }
 
 const $ = (id) => document.getElementById(id);
+
+/* ============================================================
+   Idioma
+   Los textos viven en idiomas.js y se pegan a la pantalla por la clave que
+   lleva cada hueco en su data-i18n. Cambiar de idioma no recarga: se vuelve a
+   recorrer el DOM y a repintar lo que se escribe desde JS.
+   ============================================================ */
+let idioma = idiomaInicial();
+
+function idiomaInicial() {
+  if (IDIOMAS[config.idioma]) return config.idioma;
+  const suyo = (navigator.language || "").slice(0, 2).toLowerCase();
+  return IDIOMAS[suyo] ? suyo : IDIOMA_POR_DEFECTO;
+}
+
+function t(clave, datos) {
+  return traducir(IDIOMAS[idioma] && IDIOMAS[idioma].textos,
+                  IDIOMAS[IDIOMA_POR_DEFECTO].textos, clave, datos);
+}
+
+function aplicarIdioma() {
+  document.documentElement.lang = idioma;
+  for (const el of document.querySelectorAll("[data-i18n]")) el.textContent = t(el.dataset.i18n);
+  for (const el of document.querySelectorAll("[data-i18n-title]")) el.title = t(el.dataset.i18nTitle);
+  for (const el of document.querySelectorAll("[data-i18n-ph]")) el.placeholder = t(el.dataset.i18nPh);
+}
+
+/* El desplegable sale de los idiomas que haya, así que añadir uno es añadirlo
+   a idiomas.js y ya está. */
+(function construirIdiomas() {
+  const sel = $("sel-idioma");
+  for (const clave of Object.keys(IDIOMAS)) {
+    const o = document.createElement("option");
+    o.value = clave;
+    o.textContent = IDIOMAS[clave].nombre;
+    sel.appendChild(o);
+  }
+  sel.value = idioma;
+  sel.addEventListener("change", () => {
+    idioma = sel.value;
+    config.idioma = idioma;
+    guardarConfig();
+    aplicarIdioma();
+    pintarPaleta();
+    refrescarAhora();   // resúmenes, líneas de info y nivel de zoom
+  });
+})();
 
 function avisar(texto) {
   $("aviso").textContent = texto;
@@ -63,14 +110,14 @@ async function archivoAImagen(archivo) {
 
 async function cargarArchivos(lista) {
   const validos = [...lista].filter(esImagen);
-  if (!validos.length) { avisar("No se encontraron imágenes."); return; }
+  if (!validos.length) { avisar(t("img.ninguna")); return; }
   avisar("");
   for (const archivo of validos) {
     try {
       const original = await archivoAImagen(archivo);
       imagenes.push({ nombre: archivo.name, original });
     } catch (e) {
-      avisar(`No se pudo leer ${archivo.name}`);
+      avisar(t("img.noSePudo", { nombre: archivo.name }));
     }
   }
   if (indiceActivo < 0 && imagenes.length) indiceActivo = 0;
@@ -151,13 +198,13 @@ function pintarMiniaturas() {
    ============================================================ */
 async function cargarPaleta() {
   const entrada = parsearEntradaPaleta($("in-paleta").value);
-  if (!entrada) { avisar("No entiendo esa paleta: pega una URL de Lospec o códigos hex."); return; }
+  if (!entrada) { avisar(t("paleta.noEntiendo")); return; }
   if (entrada.tipo === "hex") {
-    fijarPaleta({ nombre: `Manual (${entrada.colores.length} colores)`, colores: entrada.colores });
+    fijarPaleta({ nombre: t("paleta.manual", { n: entrada.colores.length }), colores: entrada.colores });
     avisar("");
     return;
   }
-  avisar("Cargando paleta de Lospec…");
+  avisar(t("paleta.cargando"));
   const urls = [
     `https://lospec.com/palette-list/${entrada.slug}.json`,
     `https://lospec.com/palette-api/v1/palette/${entrada.slug}`,
@@ -174,20 +221,25 @@ async function cargarPaleta() {
       return;
     } catch (e) { /* probar la siguiente URL */ }
   }
-  avisar("No se pudo descargar (¿sin conexión o CORS?). En Lospec usa «Copy hex codes» y pégalos aquí.");
+  avisar(t("paleta.sinRed"));
 }
 
-function fijarPaleta(p) {
-  paleta = p;
-  $("nombre-paleta").textContent = `${p.nombre} — ${p.colores.length} colores`;
+function pintarPaleta() {
   const cont = $("muestras-paleta");
   cont.innerHTML = "";
-  for (const c of p.colores) {
+  if (!paleta) { $("nombre-paleta").textContent = ""; return; }
+  $("nombre-paleta").textContent = t("paleta.nombre", { nombre: paleta.nombre, n: paleta.colores.length });
+  for (const c of paleta.colores) {
     const s = document.createElement("span");
     s.style.background = rgbAHex(c);
     s.title = rgbAHex(c);
     cont.appendChild(s);
   }
+}
+
+function fijarPaleta(p) {
+  paleta = p;
+  pintarPaleta();
   recientes = [p, ...recientes.filter((r) => r.nombre !== p.nombre)].slice(0, 6);
   guardarRecientes();
   pintarRecientes();
@@ -203,7 +255,7 @@ function pintarRecientes() {
     const b = document.createElement("button");
     b.type = "button";
     b.textContent = r.nombre;
-    b.title = "Usar esta paleta";
+    b.title = t("paleta.reciente");
     b.addEventListener("click", () => fijarPaleta(r));
     cont.appendChild(b);
   }
@@ -218,7 +270,7 @@ const EXT_PALETA = /\.(gpl|pal|hex|txt|act)$/i;
 async function cargarPaletaDeArchivo(archivo) {
   const base = archivo.name.replace(/\.[^.]+$/, "");
   if (/\.(ase|aseprite)$/i.test(archivo.name)) {
-    avisar("Los .ase y .aseprite no los leo: guarda la paleta como .gpl, .pal, .hex o .png.");
+    avisar(t("paleta.noAse"));
     return;
   }
   try {
@@ -226,21 +278,20 @@ async function cargarPaletaDeArchivo(archivo) {
     if (esImagen(archivo) && !EXT_PALETA.test(archivo.name)) {
       const img = await archivoAImagen(archivo);
       const colores = coloresDeImagen(img, MAX_COLORES_PALETA);
-      if (!colores.length) { avisar("Esa imagen no tiene ni un píxel opaco del que sacar colores."); return; }
+      if (!colores.length) { avisar(t("paleta.imagenVacia")); return; }
       fijarPaleta({ nombre: base, colores });
-      avisar(colores.length >= MAX_COLORES_PALETA
-        ? `Esa imagen trae muchos colores: me quedo con los ${MAX_COLORES_PALETA} primeros.` : "");
+      avisar(colores.length >= MAX_COLORES_PALETA ? t("paleta.recorte", { n: MAX_COLORES_PALETA }) : "");
       return;
     }
     const paleteado = parsearArchivoPaleta(new Uint8Array(await archivo.arrayBuffer()));
     if (!paleteado) {
-      avisar("No entiendo ese fichero. Valen .gpl, .pal, .hex, .txt, .act o una imagen de muestras.");
+      avisar(t("paleta.noFichero"));
       return;
     }
     fijarPaleta({ nombre: paleteado.nombre || base, colores: paleteado.colores });
     avisar("");
   } catch (e) {
-    avisar(`No se pudo leer ${archivo.name}.`);
+    avisar(t("img.noSePudo", { nombre: archivo.name }));
   }
 }
 
@@ -261,19 +312,12 @@ $("input-paleta").addEventListener("change", (e) => {
    Máscaras: los tres canales de la textura RGB
    ============================================================ */
 const CANALES = [
-  { clave: "metallic",   canal: "r", etiqueta: "Metallic" },
-  { clave: "smoothness", canal: "g", etiqueta: "Smoothness" },
-  { clave: "emisivo",    canal: "b", etiqueta: "Emisivo" },
+  { clave: "metallic",   canal: "r" },
+  { clave: "smoothness", canal: "g" },
+  { clave: "emisivo",    canal: "b" },
 ];
 
-const FUENTES = [
-  ["luminancia", "Luminancia"],
-  ["maximo", "Valor máximo (RGB)"],
-  ["saturacion", "Saturación"],
-  ["rojo", "Canal rojo"],
-  ["verde", "Canal verde"],
-  ["azul", "Canal azul"],
-];
+const FUENTES = ["luminancia", "maximo", "saturacion", "rojo", "verde", "azul"];
 
 /* Los tres bloques de ajustes son iguales salvo el canal, así que se generan
    aquí en lugar de repetir el mismo HTML tres veces. */
@@ -282,18 +326,18 @@ const FUENTES = [
     <div class="bloque" id="mascara-${c.clave}">
       <label class="cabecera-bloque">
         <input type="checkbox" id="chk-${c.clave}" checked>
-        <span class="canal ${c.canal}">${c.canal.toUpperCase()}</span><strong>${c.etiqueta}</strong>
+        <span class="canal ${c.canal}">${c.canal.toUpperCase()}</span><strong data-i18n="canal.${c.clave}"></strong>
       </label>
       <div class="cuerpo-bloque">
         <div class="fila">
-          <label style="width:72px">Fuente</label>
-          <select id="sel-${c.clave}-fuente">${FUENTES.map(([v, n]) => `<option value="${v}">${n}</option>`).join("")}</select>
+          <label style="width:72px" data-i18n="mascaras.fuente"></label>
+          <select id="sel-${c.clave}-fuente">${FUENTES.map((f) => `<option value="${f}" data-i18n="fuente.${f}"></option>`).join("")}</select>
         </div>
-        <div class="fila"><label style="width:72px">Brillo</label><input type="range" id="sl-${c.clave}-brillo" min="-100" max="100" value="0"><output id="out-${c.clave}-brillo">0</output></div>
-        <div class="fila"><label style="width:72px">Contraste</label><input type="range" id="sl-${c.clave}-contraste" min="-100" max="100" value="0"><output id="out-${c.clave}-contraste">0</output></div>
-        <div class="fila"><label><input type="checkbox" id="chk-${c.clave}-invertir"> Invertir</label></div>
+        <div class="fila"><label style="width:72px" data-i18n="mascaras.brillo"></label><input type="range" id="sl-${c.clave}-brillo" min="-100" max="100" value="0"><output id="out-${c.clave}-brillo">0</output></div>
+        <div class="fila"><label style="width:72px" data-i18n="mascaras.contraste"></label><input type="range" id="sl-${c.clave}-contraste" min="-100" max="100" value="0"><output id="out-${c.clave}-contraste">0</output></div>
+        <div class="fila"><label><input type="checkbox" id="chk-${c.clave}-invertir"> <span data-i18n="mascaras.invertir"></span></label></div>
         <div class="fila">
-          <label><input type="checkbox" id="chk-${c.clave}-umbral"> Umbral</label>
+          <label><input type="checkbox" id="chk-${c.clave}-umbral"> <span data-i18n="mascaras.umbral"></span></label>
           <input type="range" id="sl-${c.clave}-umbral" min="0" max="255" value="128"><output id="out-${c.clave}-umbral">128</output>
         </div>
       </div>
@@ -510,46 +554,51 @@ function maquinaDe(b) {
   return "medida";
 }
 
-const CRITERIOS = { error: "menos error", frecuencia: "los más repetidos" };
-
 function textoBloques(op, bloques) {
   if (!bloques) return "";
   const b = op.bloques;
-  const porcentaje = bloques.bloques ? Math.round(bloques.tocados * 100 / bloques.bloques) : 0;
-  return `${b.ancho}×${b.alto} · ${b.colores} colores · ${CRITERIOS[b.criterio]} — ` +
-    `${bloques.tocados} de ${bloques.bloques} bloques tocados (${porcentaje} %), ` +
-    `${bloques.cambiados} px cambiados`;
+  return t("bloques.info", {
+    ancho: b.ancho, alto: b.alto, colores: b.colores,
+    criterio: t(b.criterio === "error" ? "bloques.criterioError" : "bloques.criterioFrecuencia"),
+    tocados: bloques.tocados, total: bloques.bloques, cambiados: bloques.cambiados,
+    porcentaje: bloques.bloques ? Math.round(bloques.tocados * 100 / bloques.bloques) : 0,
+  });
 }
 
 /* Qué ha hecho ReFondo, en una línea: de qué color era el fondo, de dónde ha
    salido ese color y cuánta imagen se ha llevado por delante. */
 function textoFondo(op, fondo) {
   if (!fondo) return "";
-  if (!fondo.color) return "Ni un píxel opaco en el marco: no sé de qué color es el fondo.";
+  if (!fondo.color) return t("fondo.sinColor");
   const total = fondo.imagen.ancho * fondo.imagen.alto;
-  const alcance = op.fondo.alcance === "todo" ? "todo ese color" : "solo lo de fuera";
-  const porcentaje = Math.round(fondo.quitados * 100 / total);
-  return rgbAHex(fondo.color) + (op.fondo.auto ? " (del marco)" : " (a mano)") +
-    " · " + alcance + " · " + fondo.quitados + " px quitados (" + porcentaje + " %)";
+  return t("fondo.info", {
+    hex: rgbAHex(fondo.color),
+    origen: t(op.fondo.auto ? "fondo.origenMarco" : "fondo.origenMano"),
+    // En medio de una frase van en minúscula: los de la lista de arriba empiezan por mayúscula.
+    alcance: t(op.fondo.alcance === "todo" ? "fondo.resumenTodo" : "fondo.resumenFuera"),
+    px: fondo.quitados,
+    porcentaje: Math.round(fondo.quitados * 100 / total),
+  });
 }
 
 /* Qué está haciendo ReVer, en una línea: los ajustes que no están a cero y
    cuánta imagen ha marcado el canal de bordes. */
-const MODOS_BORDE = { oscurecer: "oscureciendo", aclarar: "aclarando", realce: "realzando" };
-const AJUSTES = [["brillo", "brillo"], ["contraste", "contraste"],
-                 ["saturacion", "saturación"], ["tono", "tono"]];
+const AJUSTES = ["brillo", "contraste", "saturacion", "tono"];
+const MODOS_BORDE = { oscurecer: "ver.modoOscurecer", aclarar: "ver.modoAclarar", realce: "ver.modoRealce" };
 
 function textoVer(op, salida) {
   const tocados = AJUSTES
-    .filter(([clave]) => op.ajustes[clave])
-    .map(([clave, etiqueta]) => `${etiqueta} ${op.ajustes[clave] > 0 ? "+" : ""}${op.ajustes[clave]}`);
-  const color = tocados.length ? tocados.join(" · ") : "color sin tocar";
-  if (!salida.bordes) return color + " · sin canal de bordes";
+    .filter((clave) => op.ajustes[clave])
+    .map((clave) => `${t("ver." + clave)} ${op.ajustes[clave] > 0 ? "+" : ""}${op.ajustes[clave]}`);
+  const color = tocados.length ? tocados.join(" · ") : t("ver.resumenLimpio");
+  if (!salida.bordes) return t("ver.infoSinBordes", { color });
   let marcados = 0;
   for (let i = 0; i < salida.bordes.length; i++) if (salida.bordes[i]) marcados++;
   const total = salida.color.ancho * salida.color.alto;
-  return `${color} · bordes en ${marcados} px (${Math.round(marcados * 100 / total)} %), ` +
-    `${MODOS_BORDE[op.bordes.modo]} al ${op.bordes.influencia} %`;
+  return t("ver.info", {
+    color, px: marcados, porcentaje: Math.round(marcados * 100 / total),
+    modo: t(MODOS_BORDE[op.bordes.modo]), influencia: op.bordes.influencia,
+  });
 }
 
 /* Las máscaras se calculan sobre el resultado final (con la paleta ya aplicada)
@@ -571,31 +620,39 @@ function procesarMascaras(resultado, op) {
    ============================================================ */
 const HERRAMIENTAS = [
   { id: "tarjeta-imagenes",
-    resumen: () => imagenes.length === 1 ? "1 imagen" : `${imagenes.length} imágenes` },
+    resumen: () => t("img.cuantas", { n: imagenes.length }) },
   { id: "tarjeta-fondo", chk: "chk-fondo",
-    resumen: (op) => `${op.fondo.auto ? "auto" : op.fondo.hex} · ` +
-      `${op.fondo.alcance === "todo" ? "todo el color" : "solo fuera"} · tol ${op.fondo.tolerancia}` +
-      (op.fondo.orden === "despues" ? " · tras ReSize" : "") },
+    resumen: (op) => t("fondo.resumen", {
+      color: op.fondo.auto ? t("fondo.resumenAuto") : op.fondo.hex,
+      alcance: t(op.fondo.alcance === "todo" ? "fondo.resumenTodo" : "fondo.resumenFuera"),
+      tolerancia: op.fondo.tolerancia,
+    }) + (op.fondo.orden === "despues" ? t("fondo.resumenDespues") : "") },
   { id: "tarjeta-resize", chk: "chk-resize",
-    resumen: (op) => `${op.ancho}×${op.alto} · ${op.metodoResize === "vecino" ? "vecino" : "área"}` +
-      (op.alfaDura ? " · alfa 1 bit" : "") },
+    resumen: (op) => t("resize.resumen", {
+      ancho: op.ancho, alto: op.alto,
+      metodo: t(op.metodoResize === "vecino" ? "resize.resumenVecino" : "resize.resumenArea"),
+    }) + (op.alfaDura ? t("resize.resumenAlfa") : "") },
   { id: "tarjeta-ver", chk: "chk-ver",
     resumen: (op) => {
-      const tocados = AJUSTES.filter(([clave]) => op.ajustes[clave]).length;
-      return (tocados ? `${tocados} ajuste${tocados > 1 ? "s" : ""}` : "color sin tocar") +
-        (op.bordes.activos ? ` · bordes ${op.bordes.metodo} ${op.bordes.influencia} %` : " · sin bordes");
+      const tocados = AJUSTES.filter((clave) => op.ajustes[clave]).length;
+      return (tocados ? t("ver.resumenAjustes", { n: tocados }) : t("ver.resumenLimpio")) +
+        (op.bordes.activos
+          ? t("ver.resumenBordes", { metodo: op.bordes.metodo, influencia: op.bordes.influencia })
+          : t("ver.resumenSinBordes"));
     } },
   { id: "tarjeta-paleta", chk: "chk-paleta",
-    resumen: (op) => (paleta ? paleta.nombre : "sin paleta") +
+    resumen: (op) => (paleta ? paleta.nombre : t("paleta.sinPaleta")) +
       (op.dithering === "ninguno" ? "" : ` · ${op.dithering === "floyd" ? "Floyd–Steinberg" : "Bayer"}`) },
   { id: "tarjeta-bloques", chk: "chk-bloques",
     resumen: (op) => {
       const maquina = maquinaDe(op.bloques);
-      const nombre = { spectrum: "Spectrum", msx: "MSX", nes: "NES", medida: "a medida" }[maquina];
-      return `${nombre} · ${op.bloques.ancho}×${op.bloques.alto} · ${op.bloques.colores} colores`;
+      const nombre = { spectrum: "Spectrum", msx: "MSX", nes: "NES" }[maquina] || t("bloques.medida");
+      return t("bloques.resumen", {
+        maquina: nombre, ancho: op.bloques.ancho, alto: op.bloques.alto, colores: op.bloques.colores,
+      });
     } },
   { id: "tarjeta-mascaras", chk: "chk-mascaras",
-    resumen: (op) => `${CANALES.filter((c) => op.canales[c.clave].activa).length}/3 canales` },
+    resumen: (op) => t("mascaras.resumen", { n: CANALES.filter((c) => op.canales[c.clave].activa).length }) },
 ];
 
 /* De salida cada paso apagado nace plegado: la columna arranca corta y solo se
@@ -603,24 +660,25 @@ const HERRAMIENTAS = [
 function pliegues() {
   if (!config.plegados) {
     config.plegados = {};
-    for (const t of HERRAMIENTAS) if (t.chk) config.plegados[t.id] = !$(t.chk).checked;
+    for (const h of HERRAMIENTAS) if (h.chk) config.plegados[h.id] = !$(h.chk).checked;
   }
   return config.plegados;
 }
 
 function pintarPliegues(op) {
   const estado = pliegues();
-  for (const t of HERRAMIENTAS) {
-    const plegada = !!estado[t.id];
-    $(t.id).classList.toggle("plegada", plegada);
-    t.boton.textContent = plegada ? "▸" : "▾";
-    t.boton.title = plegada ? "Desplegar" : "Plegar";
+  for (const herramienta of HERRAMIENTAS) {
+    const plegada = !!estado[herramienta.id];
+    $(herramienta.id).classList.toggle("plegada", plegada);
+    herramienta.boton.textContent = plegada ? "▸" : "▾";
+    herramienta.boton.title = t(plegada ? "herr.desplegar" : "herr.plegar");
     // El resumen solo tiene sentido plegada: desplegada ya se ven los controles.
-    $("resumen-" + t.id).textContent =
-      !plegada ? "" : t.chk && !$(t.chk).checked ? "apagado" : t.resumen(op);
+    $("resumen-" + herramienta.id).textContent = !plegada ? ""
+      : herramienta.chk && !$(herramienta.chk).checked ? t("herr.apagado")
+      : herramienta.resumen(op);
   }
   $("btn-plegar-todo").textContent =
-    HERRAMIENTAS.some((t) => !estado[t.id]) ? "Plegar todo" : "Desplegar todo";
+    t(HERRAMIENTAS.some((h) => !estado[h.id]) ? "herr.plegarTodo" : "herr.desplegarTodo");
 }
 
 /* ReFondo y ReSize se intercambian de verdad en la columna: si el número del
@@ -641,32 +699,32 @@ function alternarPliegue(id) {
 }
 
 (function construirPliegues() {
-  for (const t of HERRAMIENTAS) {
-    const cabecera = $(t.id).querySelector(".cabecera");
+  for (const herramienta of HERRAMIENTAS) {
+    const cabecera = $(herramienta.id).querySelector(".cabecera");
     const resumen = document.createElement("span");
     resumen.className = "resumen";
-    resumen.id = "resumen-" + t.id;
-    t.boton = document.createElement("button");
-    t.boton.type = "button";
-    t.boton.className = "boton plegar";
-    t.boton.addEventListener("click", (e) => {
+    resumen.id = "resumen-" + herramienta.id;
+    herramienta.boton = document.createElement("button");
+    herramienta.boton.type = "button";
+    herramienta.boton.className = "boton plegar";
+    herramienta.boton.addEventListener("click", (e) => {
       // La cabecera de los pasos es un <label>: sin esto, plegar cambiaría
       // además la casilla de encender o apagar el paso.
       e.preventDefault();
       e.stopPropagation();
-      alternarPliegue(t.id);
+      alternarPliegue(herramienta.id);
     });
     cabecera.appendChild(resumen);
-    cabecera.appendChild(t.boton);
-    if (t.chk) {
+    cabecera.appendChild(herramienta.boton);
+    if (herramienta.chk) {
       // Apagar un paso lo pliega y encenderlo lo abre: si no se usa, estorba.
-      $(t.chk).addEventListener("change", () => {
-        pliegues()[t.id] = !$(t.chk).checked;
+      $(herramienta.chk).addEventListener("change", () => {
+        pliegues()[herramienta.id] = !$(herramienta.chk).checked;
         guardarConfig();
         pintarPliegues(leerOpciones());
       });
     } else {
-      cabecera.addEventListener("click", () => alternarPliegue(t.id));
+      cabecera.addEventListener("click", () => alternarPliegue(herramienta.id));
     }
   }
 })();
@@ -674,7 +732,7 @@ function alternarPliegue(id) {
 $("btn-plegar-todo").addEventListener("click", () => {
   const estado = pliegues();
   const plegar = HERRAMIENTAS.some((t) => !estado[t.id]);
-  for (const t of HERRAMIENTAS) estado[t.id] = plegar;
+  for (const h of HERRAMIENTAS) estado[h.id] = plegar;
   guardarConfig();
   pintarPliegues(leerOpciones());
 });
@@ -720,7 +778,7 @@ function recolocarTodo() {
   if (!res.width) { $("nivel-zoom").textContent = ""; return; }
   const escala = escalaDe(res.parentElement, res.width, res.height);
   const texto = escala >= 1 ? `${Math.round(escala)}×` : `1/${Math.round(1 / escala)}`;
-  $("nivel-zoom").textContent = texto + (vista.zoom === ZOOM_MIN ? " · ajustado" : "");
+  $("nivel-zoom").textContent = texto + (vista.zoom === ZOOM_MIN ? t("vista.ajustado") : "");
 }
 
 /* Cambia el zoom dejando quieto el punto de la imagen que hay bajo el cursor.
@@ -824,7 +882,7 @@ function refrescarAhora() {
   $("btn-descargar").disabled = !hay;
   $("btn-descargar-zip").disabled = imagenes.length === 0;
   $("out-intensidad").textContent = $("sl-intensidad").value;
-  for (const [campo] of AJUSTES) $("out-ver-" + campo).textContent = $("sl-ver-" + campo).value;
+  for (const campo of AJUSTES) $("out-ver-" + campo).textContent = $("sl-ver-" + campo).value;
   $("out-alfa-umbral").textContent = $("sl-alfa-umbral").value;
   $("sl-alfa-umbral").disabled = !$("chk-alfa-dura").checked;
   $("out-fondo-tolerancia").textContent = $("sl-fondo-tolerancia").value;
@@ -886,7 +944,7 @@ function refrescarAhora() {
   const salida = procesar(item.original, op);
   const resultado = salida.imagen;
   dibujar($("canvas-resultado"), resultado);
-  const conPaleta = op.repalette && paleta ? ` — ${paleta.colores.length} colores` : "";
+  const conPaleta = op.repalette && paleta ? t("vista.infoColores", { n: paleta.colores.length }) : "";
   $("info-resultado").textContent =
     `${nombreSalida(item.nombre, op.sufijo)} — ${resultado.ancho}×${resultado.alto}${conPaleta}`;
 
@@ -924,9 +982,9 @@ function refrescarAhora() {
     const m = procesarMascaras(resultado, op);
     for (const c of CANALES) dibujar($("canvas-m-" + c.clave), canalAImagen(resultado, m.canales[c.clave]));
     dibujar($("canvas-mezcla"), m.mezcla);
-    const apagados = CANALES.filter((c) => !op.canales[c.clave].activa).map((c) => c.etiqueta);
+    const apagados = CANALES.filter((c) => !op.canales[c.clave].activa).map((c) => t("canal." + c.clave));
     $("info-mascaras").textContent = nombreSalida(item.nombre, op.sufijoMascara) +
-      (apagados.length ? ` — a negro: ${apagados.join(", ")}` : "");
+      (apagados.length ? t("mascaras.aNegro", { canales: apagados.join(", ") }) : "");
   }
   recolocarTodo();
 }
@@ -1013,7 +1071,7 @@ $("btn-descargar-zip").addEventListener("click", async () => {
   const usados = new Map();
   try {
     for (let i = 0; i < imagenes.length; i++) {
-      boton.textContent = `Procesando ${i + 1}/${imagenes.length}…`;
+      boton.textContent = t("salida.procesando", { i: i + 1, n: imagenes.length });
       for (const salida of salidasDe(imagenes[i], op)) {
         const blob = await imagenAPngBlob(salida.img);
         let nombre = salida.nombre;
@@ -1034,6 +1092,9 @@ $("btn-descargar-zip").addEventListener("click", async () => {
 /* ============================================================
    Restaurar configuración guardada
    ============================================================ */
+/* El idioma antes que nada: así la primera pintada ya sale traducida. */
+aplicarIdioma();
+
 (function restaurar() {
   const op = config.opciones;
   if (op) {
@@ -1048,6 +1109,7 @@ $("btn-descargar-zip").addEventListener("click", async () => {
   if (config.paletaEntrada) $("in-paleta").value = config.paletaEntrada;
   pintarRecientes();
   if (recientes.length) fijarPaleta(recientes[0]);
+  else pintarPaleta();
   refrescarAhora();
 })();
 

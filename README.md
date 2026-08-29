@@ -11,6 +11,8 @@ Herramienta web (PWA, sin dependencias ni build) para preparar assets de un jueg
 
 La vista previa (original / resultado, más los dos visores de ReFondo —lo que se ha quitado y la imagen sin fondo—, los tres de ReVer —canal de color, canal de bordes y lo que entra a RePalette—, los dos de ReBloques —la imagen sin límite y un mapa de cuánto ha mordido cada bloque— y los cuatro de máscaras) se actualiza en vivo y tiene **zoom y paneo sincronizados** entre todas las vistas: rueda para acercar sobre el punto del cursor, arrastrar para mover, doble clic o «Ajustar» para volver. Al ampliar, la escala se redondea a entero para que el píxel siga siendo cuadrado. Descarga el PNG de la imagen activa o un **ZIP con todas** — con las máscaras activas cada imagen saca dos ficheros, `nombre_rp.png` y `nombre_mask.png` (sufijos configurables) (escritor ZIP propio, sin dependencias). Todo se procesa en local: nada sale del navegador (salvo la descarga de la paleta desde Lospec).
 
+La interfaz está en **inglés y español**, con el selector arriba a la derecha: arranca en el idioma del navegador si lo tiene y recuerda el que elijas. Cambiarlo no recarga la página. Los textos viven todos en `idiomas.js` y lo que le falte a un idioma sale en el de por defecto, así que añadir uno es añadir un objeto más.
+
 La pantalla **se ajusta al ancho de la ventana**: no hay ancho máximo y las tarjetas se reparten en tantas columnas como quepan, tanto las herramientas (una, dos o tres sub-columnas según la pantalla) como los visores de cada paso, que en pantalla ancha se ven a la vez en vez de uno debajo de otro. La vista principal se queda todo el alto que sobre, así que en un monitor grande el sprite se ve más grande en vez de dejar hueco.
 
 La columna de herramientas es **plegable**: cada tarjeta se cierra por su cuenta con el chevrón de su cabecera y, plegada, resume ahí mismo cómo está configurada (`64×64 · área`, `auto · solo fuera · tol 8`, `apagado`…), de forma que se puede trabajar con todas cerradas sin perder de vista el pipeline. Apagar un paso lo pliega solo y encenderlo lo abre; el botón «Plegar todo» las cierra de golpe y lo que dejes plegado se recuerda entre sesiones.
@@ -39,8 +41,9 @@ node pruebas.mjs
 
 ```
 repixel/
-├── index.html            # Solo el HTML: la pantalla y las tres etiquetas
+├── index.html            # Solo el HTML: la pantalla y sus etiquetas (sin textos)
 ├── estilos.css           # Todos los estilos
+├── idiomas.js            # Los textos de la interfaz, uno por idioma
 ├── logica.js             # Lógica pura, sin DOM: es lo que se testea
 ├── app.js                # Todo lo que toca el navegador (se carga después de logica.js)
 ├── pruebas.mjs           # Tests en Node de logica.js

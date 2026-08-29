@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,31 +12,36 @@
 </head>
 <body>
 
+<!-- El texto de la pantalla no está aquí: cada sitio donde va texto lleva su
+     clave en data-i18n (o data-i18n-title / data-i18n-ph para el atributo) y lo
+     rellena aplicarIdioma() desde idiomas.js. Aquí solo queda la estructura. -->
+
 <div id="app">
   <header>
     <h1>RePixel</h1>
-    <p>Reescala, borra el fondo, aplica paletas de Lospec, emula el clash de las máquinas de 8 bits y genera máscaras para tu juego pixel art. Todo se procesa en local.</p>
+    <p data-i18n="app.lema"></p>
+    <span style="flex:1"></span>
+    <select id="sel-idioma" class="idioma" title="Language"></select>
   </header>
 
   <div class="columnas">
     <!-- ==================== Columna izquierda: carga + herramientas ==================== -->
     <div class="columna-herramientas">
       <div class="fila" id="barra-herramientas">
-        <strong>Herramientas</strong>
-        <span class="nota">pliega las que no estés tocando</span>
+        <strong data-i18n="herr.titulo"></strong>
         <span style="flex:1"></span>
-        <button class="boton" id="btn-plegar-todo">Plegar todo</button>
+        <button class="boton" id="btn-plegar-todo"></button>
       </div>
 
       <div class="tarjetas">
         <div class="tarjeta" id="tarjeta-imagenes">
-          <div class="cabecera"><strong>Imágenes</strong></div>
+          <div class="cabecera"><strong data-i18n="img.titulo"></strong></div>
           <div class="cuerpo">
-            <div id="zona-soltar">Arrastra imágenes o carpetas aquí<br>o usa los botones</div>
+            <div id="zona-soltar" data-i18n="img.soltar"></div>
             <div class="fila">
-              <button class="boton" id="btn-archivos">Elegir imágenes</button>
-              <button class="boton" id="btn-carpeta">Elegir carpeta</button>
-              <button class="boton" id="btn-limpiar">Vaciar</button>
+              <button class="boton" id="btn-archivos" data-i18n="img.archivos" data-i18n-title="img.archivosTitulo"></button>
+              <button class="boton" id="btn-carpeta" data-i18n="img.carpeta" data-i18n-title="img.carpetaTitulo"></button>
+              <button class="boton" id="btn-limpiar" data-i18n="img.vaciar" data-i18n-title="img.vaciarTitulo"></button>
             </div>
             <input type="file" id="input-archivos" accept="image/*" multiple hidden>
             <input type="file" id="input-carpeta" webkitdirectory hidden>
@@ -50,34 +55,34 @@
             <span class="paso">1</span><strong>ReFondo</strong>
           </label>
           <div class="cuerpo">
-            <div class="nota">Quita el fondo liso que suele traer el pixel art generado por IA. Averigua dos cosas: <b>qué color</b> (gana el opaco más repetido del marco) y <b>qué es «fuera»</b> (se extiende desde el borde del lienzo, así el mismo color <i>dentro</i> del dibujo —un ojo, un hueco cerrado— no se borra).</div>
+            <div class="nota" data-i18n="fondo.nota"></div>
             <div class="fila">
-              <label style="width:78px">Cuándo</label>
+              <label style="width:78px" data-i18n="fondo.cuando"></label>
               <select id="sel-fondo-orden">
-                <option value="antes">Antes de ReSize (a resolución completa)</option>
-                <option value="despues">Después de ReSize</option>
+                <option value="antes" data-i18n="fondo.antes"></option>
+                <option value="despues" data-i18n="fondo.despues"></option>
               </select>
             </div>
-            <div class="nota"><b>Antes</b>: busca el color donde el fondo aún es plano y deja que ReSize reparta él solo el alfa del contorno, así que el borde sale limpio. <b>Después</b>: sobre la imagen ya suavizada —mejor si el fondo trae ruido o degradado, y más rápido—, pero el halo ya viene mezclado.</div>
+            <div class="nota" data-i18n="fondo.notaOrden"></div>
             <div class="fila">
-              <label style="width:78px">Color</label>
+              <label style="width:78px" data-i18n="fondo.color"></label>
               <select id="sel-fondo-color">
-                <option value="auto">Automático (el del marco)</option>
-                <option value="manual">A mano</option>
+                <option value="auto" data-i18n="fondo.auto"></option>
+                <option value="manual" data-i18n="fondo.manual"></option>
               </select>
-              <input type="color" id="in-fondo-color" value="#000000" title="Color de fondo a mano">
-              <button class="boton" id="btn-fondo-tomar" title="Copiar aquí el color que ha detectado">Tomar el detectado</button>
+              <input type="color" id="in-fondo-color" value="#000000" data-i18n-title="fondo.colorTitulo">
+              <button class="boton" id="btn-fondo-tomar" data-i18n="fondo.tomar" data-i18n-title="fondo.tomarTitulo"></button>
             </div>
             <div class="fila">
-              <label style="width:78px">Alcance</label>
+              <label style="width:78px" data-i18n="fondo.alcance"></label>
               <select id="sel-fondo-alcance">
-                <option value="fuera">Solo lo de fuera (desde el borde)</option>
-                <option value="todo">Todo ese color, esté donde esté</option>
+                <option value="fuera" data-i18n="fondo.fuera"></option>
+                <option value="todo" data-i18n="fondo.todo"></option>
               </select>
             </div>
-            <div class="fila"><label style="width:78px">Tolerancia</label><input type="range" id="sl-fondo-tolerancia" min="0" max="100" value="8"><output id="out-fondo-tolerancia">8</output></div>
-            <div class="fila"><label style="width:78px">Desvanecer</label><input type="range" id="sl-fondo-desvanecer" min="0" max="100" value="0"><output id="out-fondo-desvanecer">0</output></div>
-            <div class="nota">Con «desvanecer» a 0 el corte es seco. Subiéndolo, los píxeles a medio camino entre el fondo y el dibujo pierden alfa en proporción en vez de quedarse enteros: es lo que se come el halo cuando ReFondo va detrás de ReSize.</div>
+            <div class="fila"><label style="width:78px" data-i18n="fondo.tolerancia"></label><input type="range" id="sl-fondo-tolerancia" min="0" max="100" value="8"><output id="out-fondo-tolerancia">8</output></div>
+            <div class="fila"><label style="width:78px" data-i18n="fondo.desvanecer"></label><input type="range" id="sl-fondo-desvanecer" min="0" max="100" value="0"><output id="out-fondo-desvanecer">0</output></div>
+            <div class="nota" data-i18n="fondo.notaFade"></div>
           </div>
         </div>
 
@@ -88,29 +93,29 @@
           </label>
           <div class="cuerpo">
             <div class="fila">
-              <label>Tamaño</label>
+              <label data-i18n="resize.tamano"></label>
               <input type="number" id="in-ancho" min="1" max="4096" value="64"> ×
               <input type="number" id="in-alto" min="1" max="4096" value="64"> px
             </div>
-            <div class="fila" id="tamanos-rapidos"><label>Rápido</label></div>
+            <div class="fila" id="tamanos-rapidos"><label data-i18n="resize.rapido"></label></div>
             <div class="fila">
-              <label><input type="checkbox" id="chk-proporcion" checked> Mantener proporción (encaja dentro)</label>
+              <label><input type="checkbox" id="chk-proporcion" checked> <span data-i18n="resize.proporcion"></span></label>
             </div>
             <div class="fila">
-              <label>Método</label>
+              <label data-i18n="resize.metodo"></label>
               <select id="sel-metodo-resize">
-                <option value="area">Promedio de área (mejor al reducir)</option>
-                <option value="vecino">Vecino más cercano (pixel art limpio)</option>
+                <option value="area" data-i18n="resize.area"></option>
+                <option value="vecino" data-i18n="resize.vecino"></option>
               </select>
             </div>
             <div class="fila">
-              <label><input type="checkbox" id="chk-alfa-dura" checked> Alfa de 1 bit (sin semitransparencias)</label>
+              <label><input type="checkbox" id="chk-alfa-dura" checked> <span data-i18n="resize.alfaDura"></span></label>
             </div>
             <div class="fila">
-              <label style="width:78px">Umbral</label>
+              <label style="width:78px" data-i18n="resize.umbral"></label>
               <input type="range" id="sl-alfa-umbral" min="1" max="255" value="128"><output id="out-alfa-umbral">128</output>
             </div>
-            <div class="nota">El promedio de área reparte alfa fraccionaria por el contorno: bonito de mirar, pero un sprite de juego lo quiere binario. Con el corte, cada píxel entra en la silueta o no entra —subir el umbral la adelgaza, bajarlo la engorda—. Se aplica al final de ReSize + ReFondo, así que gana siempre: no quedan semitransparencias vengan de donde vengan.</div>
+            <div class="nota" data-i18n="resize.notaAlfa"></div>
           </div>
         </div>
 
@@ -120,44 +125,44 @@
             <span class="paso">3</span><strong>ReVer</strong>
           </label>
           <div class="cuerpo">
-            <div class="nota">Lo que ve RePixel antes de la paleta. De la imagen ya reescalada salen dos canales: el de <b>color</b> es el que se palettiza (así decides qué colores acaba eligiendo RePalette) y el de <b>bordes</b> no se ve en la salida, se mezcla con el anterior justo antes de palettizar para acentuar los contornos.</div>
+            <div class="nota" data-i18n="ver.nota"></div>
 
             <div class="bloque">
-              <div class="cabecera-bloque"><strong>Canal de color</strong></div>
+              <div class="cabecera-bloque"><strong data-i18n="ver.canalColor"></strong></div>
               <div class="cuerpo-bloque">
-                <div class="fila"><label style="width:78px">Brillo</label><input type="range" id="sl-ver-brillo" min="-100" max="100" value="0"><output id="out-ver-brillo">0</output></div>
-                <div class="fila"><label style="width:78px">Contraste</label><input type="range" id="sl-ver-contraste" min="-100" max="100" value="0"><output id="out-ver-contraste">0</output></div>
-                <div class="fila"><label style="width:78px">Saturación</label><input type="range" id="sl-ver-saturacion" min="-100" max="100" value="0"><output id="out-ver-saturacion">0</output></div>
-                <div class="fila"><label style="width:78px">Tono</label><input type="range" id="sl-ver-tono" min="-180" max="180" value="0"><output id="out-ver-tono">0</output></div>
-                <div class="fila"><button class="boton" id="btn-reset-ajustes">Restablecer ajustes</button></div>
+                <div class="fila"><label style="width:78px" data-i18n="ver.brillo"></label><input type="range" id="sl-ver-brillo" min="-100" max="100" value="0"><output id="out-ver-brillo">0</output></div>
+                <div class="fila"><label style="width:78px" data-i18n="ver.contraste"></label><input type="range" id="sl-ver-contraste" min="-100" max="100" value="0"><output id="out-ver-contraste">0</output></div>
+                <div class="fila"><label style="width:78px" data-i18n="ver.saturacion"></label><input type="range" id="sl-ver-saturacion" min="-100" max="100" value="0"><output id="out-ver-saturacion">0</output></div>
+                <div class="fila"><label style="width:78px" data-i18n="ver.tono"></label><input type="range" id="sl-ver-tono" min="-180" max="180" value="0"><output id="out-ver-tono">0</output></div>
+                <div class="fila"><button class="boton" id="btn-reset-ajustes" data-i18n="ver.restablecer" data-i18n-title="ver.restablecerTitulo"></button></div>
               </div>
             </div>
 
             <div class="bloque" id="bloque-bordes">
               <label class="cabecera-bloque">
-                <input type="checkbox" id="chk-bordes" checked><strong>Canal de bordes</strong>
+                <input type="checkbox" id="chk-bordes" checked><strong data-i18n="ver.canalBordes"></strong>
               </label>
               <div class="cuerpo-bloque">
                 <div class="fila">
-                  <label style="width:78px">Método</label>
+                  <label style="width:78px" data-i18n="ver.metodo"></label>
                   <select id="sel-bordes-metodo">
-                    <option value="sobel">Sobel (gradiente)</option>
-                    <option value="laplaciano">Laplaciano (línea fina)</option>
-                    <option value="color">Diferencia de color</option>
+                    <option value="sobel" data-i18n="ver.sobel"></option>
+                    <option value="laplaciano" data-i18n="ver.laplaciano"></option>
+                    <option value="color" data-i18n="ver.difColor"></option>
                   </select>
                 </div>
-                <div class="fila"><label style="width:78px">Umbral</label><input type="range" id="sl-bordes-umbral" min="0" max="255" value="24"><output id="out-bordes-umbral">24</output></div>
-                <div class="fila"><label><input type="checkbox" id="chk-bordes-silueta" checked> Incluir la silueta (el borde del alfa)</label></div>
+                <div class="fila"><label style="width:78px" data-i18n="ver.umbral"></label><input type="range" id="sl-bordes-umbral" min="0" max="255" value="24"><output id="out-bordes-umbral">24</output></div>
+                <div class="fila"><label><input type="checkbox" id="chk-bordes-silueta" checked> <span data-i18n="ver.silueta"></span></label></div>
                 <div class="fila">
-                  <label style="width:78px">Influye</label>
+                  <label style="width:78px" data-i18n="ver.influye"></label>
                   <select id="sel-bordes-modo">
-                    <option value="oscurecer">Oscureciendo (contorno oscuro)</option>
-                    <option value="aclarar">Aclarando (contorno claro)</option>
-                    <option value="realce">Realzando (más contraste local)</option>
+                    <option value="oscurecer" data-i18n="ver.oscurecer"></option>
+                    <option value="aclarar" data-i18n="ver.aclarar"></option>
+                    <option value="realce" data-i18n="ver.realce"></option>
                   </select>
                 </div>
-                <div class="fila"><label style="width:78px">Influencia</label><input type="range" id="sl-bordes-influencia" min="0" max="100" value="35"><output id="out-bordes-influencia">35</output></div>
-                <div class="nota">Los bordes se buscan sobre la imagen de partida y no sobre la ya ajustada: hundir el contraste para forzar la paleta no cambia dónde están los bordes.</div>
+                <div class="fila"><label style="width:78px" data-i18n="ver.influencia"></label><input type="range" id="sl-bordes-influencia" min="0" max="100" value="35"><output id="out-bordes-influencia">35</output></div>
+                <div class="nota" data-i18n="ver.notaBordes"></div>
               </div>
             </div>
           </div>
@@ -170,34 +175,34 @@
           </label>
           <div class="cuerpo">
             <div class="fila">
-              <input type="text" id="in-paleta" placeholder="URL de Lospec, slug o códigos hex" spellcheck="false">
-              <button class="boton" id="btn-cargar-paleta">Cargar</button>
+              <input type="text" id="in-paleta" data-i18n-ph="paleta.entrada" spellcheck="false">
+              <button class="boton" id="btn-cargar-paleta" data-i18n="paleta.cargar" data-i18n-title="paleta.cargarTitulo"></button>
             </div>
             <div class="fila">
-              <button class="boton" id="btn-paleta-archivo" title="Abrir una paleta guardada en el disco">Desde archivo…</button>
-              <span class="nota">.gpl · .pal · .hex · .txt · .act · o una imagen de muestras</span>
+              <button class="boton" id="btn-paleta-archivo" data-i18n="paleta.archivo" data-i18n-title="paleta.archivoTitulo"></button>
+              <span class="nota" data-i18n="paleta.formatos"></span>
             </div>
             <input type="file" id="input-paleta" accept=".gpl,.pal,.hex,.txt,.act,.png,.gif,.bmp,.webp,image/*" hidden>
             <div id="paletas-recientes"></div>
             <div id="nombre-paleta"></div>
             <div id="muestras-paleta"></div>
             <div class="fila">
-              <label>Distancia</label>
+              <label data-i18n="paleta.distancia"></label>
               <select id="sel-metrica">
-                <option value="oklab">OKLab (perceptual, recomendado)</option>
-                <option value="rgb">RGB ponderado (rápido)</option>
+                <option value="oklab" data-i18n="paleta.oklab"></option>
+                <option value="rgb" data-i18n="paleta.rgb"></option>
               </select>
             </div>
             <div class="fila">
-              <label>Dithering</label>
+              <label data-i18n="paleta.dithering"></label>
               <select id="sel-dither">
-                <option value="ninguno">Ninguno</option>
+                <option value="ninguno" data-i18n="paleta.ninguno"></option>
                 <option value="floyd">Floyd–Steinberg</option>
-                <option value="bayer">Bayer 8×8 (ordenado)</option>
+                <option value="bayer" data-i18n="paleta.bayer"></option>
               </select>
             </div>
             <div class="fila">
-              <label style="width:72px">Intensidad</label>
+              <label style="width:72px" data-i18n="paleta.intensidad"></label>
               <input type="range" id="sl-intensidad" min="0" max="100" value="100"><output id="out-intensidad">100</output>
             </div>
           </div>
@@ -209,45 +214,45 @@
             <span class="paso">5</span><strong>ReBloques</strong>
           </label>
           <div class="cuerpo">
-            <div class="nota">El <b>clash de atributos</b> de las máquinas de 8 bits: la imagen se parte en bloques y dentro de cada uno no caben más de N colores, por rica que sea la paleta. Los colores salen de los que ya hay en el bloque, así que viniendo de RePalette la salida sigue estando en la paleta.</div>
+            <div class="nota" data-i18n="bloques.nota"></div>
             <div class="fila">
-              <label style="width:78px">Máquina</label>
+              <label style="width:78px" data-i18n="bloques.maquina"></label>
               <select id="sel-bloques-maquina">
-                <option value="spectrum">ZX Spectrum — 8×8, 2 colores</option>
-                <option value="msx">MSX SCREEN 2 — 8×1, 2 colores</option>
-                <option value="nes">NES — 16×16, 4 colores</option>
-                <option value="medida">A medida</option>
+                <option value="spectrum" data-i18n="bloques.spectrum"></option>
+                <option value="msx" data-i18n="bloques.msx"></option>
+                <option value="nes" data-i18n="bloques.nes"></option>
+                <option value="medida" data-i18n="bloques.medida"></option>
               </select>
             </div>
             <div class="fila">
-              <label style="width:78px">Bloque</label>
+              <label style="width:78px" data-i18n="bloques.bloque"></label>
               <input type="number" id="in-bloques-ancho" min="1" max="256" value="8"> ×
               <input type="number" id="in-bloques-alto" min="1" max="256" value="8"> px
             </div>
             <div class="fila">
-              <label style="width:78px">Colores</label>
-              <input type="number" id="in-bloques-colores" min="1" max="64" value="2"> por bloque
+              <label style="width:78px" data-i18n="bloques.colores"></label>
+              <input type="number" id="in-bloques-colores" min="1" max="64" value="2"> <span data-i18n="bloques.porBloque"></span>
             </div>
             <div class="fila">
-              <label style="width:78px">Elegir</label>
+              <label style="width:78px" data-i18n="bloques.elegir"></label>
               <select id="sel-bloques-criterio">
-                <option value="error">Los que menos error dejan</option>
-                <option value="frecuencia">Los más repetidos</option>
+                <option value="error" data-i18n="bloques.error"></option>
+                <option value="frecuencia" data-i18n="bloques.frecuencia"></option>
               </select>
             </div>
-            <div class="nota">Con «menos error» un bloque casi todo negro con un brillo blanco se queda el blanco; con «los más repetidos» gastaría la segunda plaza en otro negro y el brillo desaparecería. Los píxeles transparentes ni gastan cupo ni se tocan.</div>
+            <div class="nota" data-i18n="bloques.notaCriterio"></div>
           </div>
         </div>
 
         <div class="tarjeta" id="tarjeta-mascaras">
           <label class="cabecera">
             <input type="checkbox" id="chk-mascaras">
-            <span class="paso">6</span><strong>Máscaras RGB</strong>
+            <span class="paso">6</span><strong data-i18n="mascaras.titulo"></strong>
           </label>
           <div class="cuerpo">
-            <div class="nota">Una sola textura para el shader: <b>R</b> metallic, <b>G</b> smoothness, <b>B</b> emisivo. Cada canal tiene sus ajustes y se calcula sobre el resultado final, con la paleta ya aplicada.</div>
+            <div class="nota" data-i18n="mascaras.nota"></div>
             <div id="bloques-mascaras"></div>
-            <div class="fila"><button class="boton" id="btn-reset-mascaras">Restablecer máscaras</button></div>
+            <div class="fila"><button class="boton" id="btn-reset-mascaras" data-i18n="mascaras.restablecer" data-i18n-title="mascaras.restablecerTitulo"></button></div>
           </div>
         </div>
       </div>
@@ -257,22 +262,22 @@
     <div class="columna-vista">
       <div class="tarjeta vista-principal">
         <div class="fila" id="controles-zoom">
-          <strong>Vista</strong>
-          <button class="boton" id="btn-zoom-menos" title="Alejar">−</button>
-          <button class="boton" id="btn-zoom-mas" title="Acercar">+</button>
-          <button class="boton" id="btn-zoom-ajustar" title="Volver al ajuste (o doble clic en una vista)">Ajustar</button>
+          <strong data-i18n="vista.titulo"></strong>
+          <button class="boton" id="btn-zoom-menos" data-i18n-title="vista.alejar">−</button>
+          <button class="boton" id="btn-zoom-mas" data-i18n-title="vista.acercar">+</button>
+          <button class="boton" id="btn-zoom-ajustar" data-i18n="vista.ajustar" data-i18n-title="vista.ajustarTitulo"></button>
           <span class="nota" id="nivel-zoom"></span>
           <span style="flex:1"></span>
-          <span class="nota">Rueda para acercar, arrastra para mover. Sincronizado entre todas las vistas.</span>
+          <span class="nota" data-i18n="vista.ayuda"></span>
         </div>
         <div class="visores" style="margin-top:10px">
           <div class="visor">
-            <h3>Original</h3>
+            <h3 data-i18n="vista.original"></h3>
             <div class="marco"><canvas id="canvas-original"></canvas></div>
             <div class="info" id="info-original"></div>
           </div>
           <div class="visor">
-            <h3>Resultado</h3>
+            <h3 data-i18n="vista.resultado"></h3>
             <div class="marco"><canvas id="canvas-resultado"></canvas></div>
             <div class="info" id="info-resultado"></div>
           </div>
@@ -282,16 +287,16 @@
       <div class="vistas-extra" id="vistas-extra">
         <div class="tarjeta" id="vista-fondo">
           <div class="fila">
-            <strong>Lo que ReFondo ha quitado</strong>
-            <span class="nota">en blanco, lo que se va</span>
+            <strong data-i18n="vista.fondoTitulo"></strong>
+            <span class="nota" data-i18n="vista.fondoNota"></span>
           </div>
           <div class="visores-mini">
             <div class="visor">
-              <h3>Fondo detectado</h3>
+              <h3 data-i18n="vista.fondoMapa"></h3>
               <div class="marco"><canvas id="canvas-fondo-mapa"></canvas></div>
             </div>
             <div class="visor">
-              <h3>Sin fondo</h3>
+              <h3 data-i18n="vista.fondoSin"></h3>
               <div class="marco"><canvas id="canvas-fondo-sin"></canvas></div>
             </div>
           </div>
@@ -300,20 +305,19 @@
 
         <div class="tarjeta" id="vista-ver">
           <div class="fila">
-            <strong>Lo que ve RePixel</strong>
-            <span class="nota">los dos canales y lo que entra a RePalette</span>
+            <strong data-i18n="vista.verTitulo"></strong>
           </div>
           <div class="visores-mini">
             <div class="visor">
-              <h3>Canal de color</h3>
+              <h3 data-i18n="vista.verColor"></h3>
               <div class="marco"><canvas id="canvas-ver-color"></canvas></div>
             </div>
             <div class="visor">
-              <h3>Canal de bordes</h3>
+              <h3 data-i18n="vista.verBordes"></h3>
               <div class="marco"><canvas id="canvas-ver-bordes"></canvas></div>
             </div>
             <div class="visor">
-              <h3>Entrada a RePalette</h3>
+              <h3 data-i18n="vista.verEntrada"></h3>
               <div class="marco"><canvas id="canvas-ver-entrada"></canvas></div>
             </div>
           </div>
@@ -322,16 +326,16 @@
 
         <div class="tarjeta" id="vista-bloques">
           <div class="fila">
-            <strong>Clash de atributos</strong>
-            <span class="nota">en blanco, cuánto ha mordido cada bloque</span>
+            <strong data-i18n="vista.bloquesTitulo"></strong>
+            <span class="nota" data-i18n="vista.bloquesNota"></span>
           </div>
           <div class="visores-mini">
             <div class="visor">
-              <h3>Sin límite</h3>
+              <h3 data-i18n="vista.bloquesAntes"></h3>
               <div class="marco"><canvas id="canvas-bloques-antes"></canvas></div>
             </div>
             <div class="visor">
-              <h3>Bloques tocados</h3>
+              <h3 data-i18n="vista.bloquesMapa"></h3>
               <div class="marco"><canvas id="canvas-bloques-mapa"></canvas></div>
             </div>
           </div>
@@ -340,24 +344,24 @@
 
         <div class="tarjeta" id="vista-mascaras">
           <div class="fila">
-            <strong>Textura de máscaras</strong>
-            <span class="nota">R metallic · G smoothness · B emisivo</span>
+            <strong data-i18n="vista.mascarasTitulo"></strong>
+            <span class="nota" data-i18n="mascaras.nota"></span>
           </div>
           <div class="visores-mini">
             <div class="visor">
-              <h3><span class="canal r">R</span> Metallic</h3>
+              <h3><span class="canal r">R</span> <span data-i18n="canal.metallic"></span></h3>
               <div class="marco"><canvas id="canvas-m-metallic"></canvas></div>
             </div>
             <div class="visor">
-              <h3><span class="canal g">G</span> Smoothness</h3>
+              <h3><span class="canal g">G</span> <span data-i18n="canal.smoothness"></span></h3>
               <div class="marco"><canvas id="canvas-m-smoothness"></canvas></div>
             </div>
             <div class="visor">
-              <h3><span class="canal b">B</span> Emisivo</h3>
+              <h3><span class="canal b">B</span> <span data-i18n="canal.emisivo"></span></h3>
               <div class="marco"><canvas id="canvas-m-emisivo"></canvas></div>
             </div>
             <div class="visor">
-              <h3>Mezcla</h3>
+              <h3 data-i18n="vista.mezcla"></h3>
               <div class="marco"><canvas id="canvas-mezcla"></canvas></div>
             </div>
           </div>
@@ -367,13 +371,13 @@
 
       <div class="tarjeta">
         <div class="fila">
-          <label>Sufijo</label>
+          <label data-i18n="salida.sufijo"></label>
           <input type="text" id="in-sufijo" value="_rp" style="flex:0 0 auto;width:84px" spellcheck="false">
-          <label id="etiqueta-sufijo-mascara">Máscaras</label>
+          <label id="etiqueta-sufijo-mascara" data-i18n="salida.sufijoMascara"></label>
           <input type="text" id="in-sufijo-mascara" value="_mask" style="flex:0 0 auto;width:84px" spellcheck="false">
           <span style="flex:1"></span>
-          <button class="boton primario" id="btn-descargar" disabled>Descargar esta</button>
-          <button class="boton primario" id="btn-descargar-zip" disabled>Descargar todas (ZIP)</button>
+          <button class="boton primario" id="btn-descargar" data-i18n="salida.descargar" data-i18n-title="salida.descargarTitulo" disabled></button>
+          <button class="boton primario" id="btn-descargar-zip" data-i18n="salida.zip" data-i18n-title="salida.zipTitulo" disabled></button>
         </div>
         <div id="aviso"></div>
       </div>
@@ -383,6 +387,7 @@
 
 <div id="estado"></div>
 
+<script src="idiomas.js"></script>
 <script src="logica.js"></script>
 <script src="app.js"></script>
 </body>

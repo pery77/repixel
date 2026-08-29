@@ -11,7 +11,7 @@ const raiz = dirname(fileURLToPath(import.meta.url));
 const codigo = readFileSync(join(raiz, "logica.js"), "utf8");
 
 const L = new Function(codigo + `
-return { limitar, numeroDeCampo, leerRuta, escribirRuta,
+return { limitar, numeroDeCampo, leerRuta, escribirRuta, traducir,
          hexARgb, rgbAHex, parsearEntradaPaleta, srgbALineal, srgbAOklab,
          prepararPaleta, colorMasCercano, aplicarPaleta, calcularTamanoDestino,
          distanciaLab2, elegirColoresBloque, limitarAtributos,
@@ -634,6 +634,18 @@ iguales(destino, { ancho: 32, canales: { metallic: { brillo: 20, activa: true } 
   "escribir crea los objetos que faltan y respeta los que ya hay");
 L.escribirRuta(destino, "canales.metallic.brillo", 0);
 iguales(L.leerRuta(destino, "canales.metallic.brillo"), 0, "y sobreescribe con un cero sin confundirlo con vacío");
+
+/* --- traducir: el respaldo por clave es lo que deja traducir a medias --- */
+const EN = { saludo: "Hi", cuantas: "{n} image|{n} images", info: "{a} of {b}" };
+const ES = { saludo: "Hola" };
+iguales(L.traducir(ES, EN, "saludo"), "Hola", "si el idioma tiene la clave, manda");
+iguales(L.traducir(ES, EN, "cuantas", { n: 3 }), "3 images", "si no la tiene, cae al de respaldo");
+iguales(L.traducir(ES, EN, "nada"), "nada", "si no está en ninguno sale la clave, para que se vea");
+iguales(L.traducir(EN, EN, "cuantas", { n: 1 }), "1 image", "el plural elige singular con n = 1");
+iguales(L.traducir(EN, EN, "cuantas", { n: 0 }), "0 images", "y plural con cualquier otro n");
+iguales(L.traducir(EN, EN, "info", { a: 2, b: 7 }), "2 of 7", "los huecos se rellenan con los datos");
+iguales(L.traducir(EN, EN, "info", { a: 2 }), "2 of {b}", "un hueco sin dato se queda a la vista");
+iguales(L.traducir({ vacio: "" }, EN, "vacio"), "", "una cadena vacía es un texto válido, no un hueco");
 
 /* --- Paletas de fichero --- */
 const bytesDe = (texto) => new TextEncoder().encode(texto);

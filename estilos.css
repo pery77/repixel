@@ -30,6 +30,8 @@ body { overflow: hidden; }
    escasea es alto. */
 header { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 header h1 { font-size: 1.5rem; letter-spacing: 0.5px; }
+/* El idioma es un ajuste, no una herramienta: pequeño y a un lado. */
+.idioma { font-size: 0.78rem; padding: 3px 6px; color: #9fb0d0; }
 header p  { color: #8b96ad; font-size: 0.9rem; }
 
 .columnas {
