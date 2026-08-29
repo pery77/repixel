@@ -26,10 +26,11 @@ Descarga PNG suelto o ZIP (escritor ZIP "store" propio, sin dependencias); con m
 
 ## Estado del proyecto (actualizar al avanzar)
 
-**Última actualización:** 2026-08-28
+**Última actualización:** 2026-08-29
 
 - ✅ Fase 1 — App funcional: carga de imágenes/carpetas (botones y arrastrar), pipeline ReFondo ↔ ReSize → ReVer → RePalette, vista previa original/resultado, descarga PNG y ZIP, config persistida en `localStorage` (`repixel_*`), tests en `pruebas.mjs` (209 comprobaciones).
 - ✅ Layout de dos columnas independientes: la de herramientas scrollea sola y la vista previa se queda fija (la página en sí no scrollea).
+- ✅ **A lo ancho de la ventana**, sin ancho máximo: las tarjetas se reparten en cuantas columnas quepan (`columns` en `.tarjetas` y en `.vistas-extra`, que el navegador cuente por el ancho), la columna de herramientas se ensancha por tramos (360 / 732 / 1104 px) y la vista principal se queda todo el alto que sobre. En pantalla ancha la app entra entera sin scroll; el que quede sale de que haya mucho abierto, no de que sobre sitio a los lados. Dos detalles del camino: un multicolumna con **altura fija** no scrollea hacia abajo, se va en columnas hacia el lado (por eso las tarjetas van en un contenedor de altura automática dentro del que scrollea), y los visores pequeños medían 300 px porque `.visores-mini .marco` empataba en especificidad con `.visor .marco` y ganaba el segundo por orden.
 - ✅ **Tarjetas plegables** en la columna de herramientas: cada una se pliega por su cuenta y, plegada, resume su ajuste en la propia cabecera (`64×64 · área`, `auto · solo fuera · tol 8`, `apagado`…), así que se puede trabajar con todas cerradas sin perder de vista el pipeline. Un paso apagado se pliega solo (y encenderlo lo abre), hay botón «Plegar todo» y el estado se guarda en `config.plegados`.
 - ✅ Máscaras RGB para el shader (R metallic, G smoothness, B emisivo), con cuatro visores debajo del preview y descarga `_mask` junto al diffuse.
 - ✅ Repo público en GitHub: `pery77/repixel`.
