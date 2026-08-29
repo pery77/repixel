@@ -69,6 +69,139 @@ function parsearEntradaPaleta(texto) {
   return null;
 }
 
+/* --- Paletas guardadas en un fichero ---
+   Los formatos que de verdad se cruza uno: .gpl (GIMP, y lo que exportan
+   Aseprite, Krita e Inkscape), .pal en sus dos sabores —el de texto JASC y el
+   binario de Microsoft—, .hex y .txt (listas de códigos, con o sin alfa
+   delante) y .act (la tabla de Photoshop). Todos devuelven
+   { nombre, colores }: el nombre solo lo trae el .gpl, en los demás lo pone
+   quien llama a partir del fichero.
+
+   Fuera quedan .ase (Adobe) y .aseprite: son binarios con estructura de
+   verdad y cualquiera de las dos herramientas exporta a los de arriba. */
+
+/* Un color de un trozo suelto de texto. Ocho dígitos son AARRGGBB —el alfa
+   delante, que es como lo escriben Paint.NET y compañía—, y el alfa se tira:
+   una paleta es una lista de colores. */
+function colorDeTrozo(trozo) {
+  const t = String(trozo).trim().replace(/^[#$]/, "");
+  if (/^[0-9a-f]{8}$/i.test(t)) return hexARgb(t.slice(2));
+  return hexARgb(t);
+}
+
+/* .hex, .txt y en general cualquier lista pegada: se ignoran los comentarios
+   (";" hasta el final de línea) y todo lo que no sea un color. */
+function parsearTextoPaleta(texto) {
+  const colores = [];
+  for (const linea of String(texto || "").split(/\r?\n/)) {
+    const limpia = linea.split(";")[0].trim();
+    if (!limpia) continue;
+    for (const trozo of limpia.split(/[\s,]+/)) {
+      const c = colorDeTrozo(trozo);
+      if (c) colores.push(c);
+    }
+  }
+  return colores.length ? { nombre: "", colores } : null;
+}
+
+/* .gpl — "GIMP Palette", el "Name:" que sí aprovechamos, y luego una línea
+   por color: "R G B<tab>nombre". */
+function parsearGpl(texto) {
+  const lineas = String(texto || "").split(/\r?\n/);
+  if (!/^GIMP Palette/i.test(lineas[0] || "")) return null;
+  let nombre = "";
+  const colores = [];
+  for (const linea of lineas.slice(1)) {
+    const l = linea.trim();
+    if (!l || l.startsWith("#")) continue;
+    const m = /^name:\s*(.+)$/i.exec(l);
+    if (m) { nombre = m[1].trim(); continue; }
+    if (/^columns:/i.test(l)) continue;
+    const n = l.split(/\s+/).slice(0, 3).map(Number);
+    if (n.length === 3 && n.every((v) => Number.isInteger(v) && v >= 0 && v <= 255)) colores.push(n);
+  }
+  return colores.length ? { nombre, colores } : null;
+}
+
+/* .pal de texto — "JASC-PAL", versión, cuántos colores y luego "R G B". */
+function parsearJascPal(texto) {
+  const lineas = String(texto || "").split(/\r?\n/).map((l) => l.trim());
+  if (!/^JASC-PAL/i.test(lineas[0] || "")) return null;
+  const colores = [];
+  for (const l of lineas.slice(3)) {
+    if (!l) continue;
+    const n = l.split(/\s+/).slice(0, 3).map(Number);
+    if (n.length === 3 && n.every((v) => Number.isInteger(v) && v >= 0 && v <= 255)) colores.push(n);
+  }
+  return colores.length ? { nombre: "", colores } : null;
+}
+
+/* .pal binario (RIFF de Microsoft): "RIFF" … "PAL " "data", y a partir de ahí
+   cuántos colores y cuatro bytes por color (el cuarto son banderas). */
+function parsearRiffPal(bytes) {
+  const marca = (i) => String.fromCharCode(bytes[i], bytes[i + 1], bytes[i + 2], bytes[i + 3]);
+  if (bytes.length < 24 || marca(0) !== "RIFF" || marca(8) !== "PAL " || marca(12) !== "data") return null;
+  const cuantos = bytes[22] | (bytes[23] << 8);
+  const colores = [];
+  for (let i = 0; i < cuantos && 24 + i * 4 + 2 < bytes.length; i++) {
+    const p = 24 + i * 4;
+    colores.push([bytes[p], bytes[p + 1], bytes[p + 2]]);
+  }
+  return colores.length ? { nombre: "", colores } : null;
+}
+
+/* .act — 256 colores a pelo (768 bytes) y, si trae cuatro bytes de más, los
+   dos primeros dicen cuántos valen de verdad. Sin ellos hay que quedarse con
+   los 256, relleno incluido: el formato no distingue el negro de sobra. */
+function parsearAct(bytes) {
+  if (bytes.length !== 768 && bytes.length !== 772) return null;
+  let cuantos = 256;
+  if (bytes.length === 772) {
+    const n = (bytes[768] << 8) | bytes[769];
+    if (n > 0 && n <= 256) cuantos = n;
+  }
+  const colores = [];
+  for (let i = 0; i < cuantos; i++) colores.push([bytes[i * 3], bytes[i * 3 + 1], bytes[i * 3 + 2]]);
+  return { nombre: "", colores };
+}
+
+/* Qué trae el fichero, mirando dentro antes que la extensión: la extensión la
+   pone quien guarda y se equivoca más que el contenido. */
+function parsearArchivoPaleta(bytes) {
+  if (!bytes || !bytes.length) return null;
+  const riff = parsearRiffPal(bytes);
+  if (riff) return riff;
+  // Un binario no es texto: si hay bytes nulos, ni se intenta.
+  const cabecera = bytes.subarray(0, 512);
+  if (!cabecera.includes(0)) {
+    const texto = new TextDecoder("utf-8").decode(bytes);
+    const gpl = parsearGpl(texto);
+    if (gpl) return gpl;
+    const jasc = parsearJascPal(texto);
+    if (jasc) return jasc;
+    const lista = parsearTextoPaleta(texto);
+    if (lista) return lista;
+  }
+  return parsearAct(bytes);
+}
+
+/* Los colores distintos de una imagen, en orden de aparición: una tira o una
+   cuadrícula de muestras es como más se comparte una paleta (Lospec la ofrece
+   así). Los píxeles transparentes no cuentan. */
+function coloresDeImagen(img, maximo) {
+  const vistos = new Set();
+  const colores = [];
+  for (let p = 0; p < img.datos.length; p += 4) {
+    if (img.datos[p + 3] < OPACO_MINIMO) continue;
+    const clave = (img.datos[p] << 16) | (img.datos[p + 1] << 8) | img.datos[p + 2];
+    if (vistos.has(clave)) continue;
+    vistos.add(clave);
+    colores.push([img.datos[p], img.datos[p + 1], img.datos[p + 2]]);
+    if (colores.length >= maximo) break;
+  }
+  return colores;
+}
+
 /* --- Color: sRGB → OKLab (espacio perceptual moderno) --- */
 function srgbALineal(c) {
   c /= 255;

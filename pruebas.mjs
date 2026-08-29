@@ -18,6 +18,8 @@ return { limitar, numeroDeCampo, leerRuta, escribirRuta,
          redimensionarArea, redimensionarVecino, reescalar, recortarAlfa, valorFuente, calcularMascara,
          combinarMascaras, canalAImagen, crc32, crearZip,
          distanciaOklab, colorDeFondo, quitarFondo,
+         colorDeTrozo, parsearTextoPaleta, parsearGpl, parsearJascPal, parsearRiffPal,
+         parsearAct, parsearArchivoPaleta, coloresDeImagen,
          luminancia, rgbAHsl, hslARgb, ajustarColor, magnitudSobel,
          detectarBordes, mediaVecindad, mezclarBordes, mapaAImagen };`)();
 
@@ -632,5 +634,72 @@ iguales(destino, { ancho: 32, canales: { metallic: { brillo: 20, activa: true } 
   "escribir crea los objetos que faltan y respeta los que ya hay");
 L.escribirRuta(destino, "canales.metallic.brillo", 0);
 iguales(L.leerRuta(destino, "canales.metallic.brillo"), 0, "y sobreescribe con un cero sin confundirlo con vacío");
+
+/* --- Paletas de fichero --- */
+const bytesDe = (texto) => new TextEncoder().encode(texto);
+
+const GPL = `GIMP Palette
+Name: Nyx8
+Columns: 8
+#
+ 8 20 30\tDarkest
+ 15 42 63\tDark
+255 255 255\tWhite
+`;
+iguales(L.parsearGpl(GPL), { nombre: "Nyx8", colores: [[8, 20, 30], [15, 42, 63], [255, 255, 255]] },
+  "gpl: se queda con el Name y con los tres números de cada línea");
+iguales(L.parsearGpl("255 0 0"), null, "gpl: sin la cabecera no es un gpl");
+
+const JASC = "JASC-PAL\r\n0100\r\n2\r\n255 0 0\r\n0 0 255\r\n";
+iguales(L.parsearJascPal(JASC), { nombre: "", colores: [[255, 0, 0], [0, 0, 255]] },
+  "pal de texto: se salta versión y cuenta, y aguanta saltos de Windows");
+iguales(L.parsearJascPal("0100\n2\n255 0 0"), null, "pal de texto: sin la cabecera JASC, no");
+
+iguales(L.parsearTextoPaleta("#ff0000\n00ff00\nzzz\n0000ff"),
+  { nombre: "", colores: [[255, 0, 0], [0, 255, 0], [0, 0, 255]] },
+  "hex: una línea por color, con o sin # y saltándose la basura");
+iguales(L.parsearTextoPaleta("; paint.net Palette File\nFFFF0000\n80000000"),
+  { nombre: "", colores: [[255, 0, 0], [0, 0, 0]] },
+  "txt: comentarios con ; y ocho cifras AARRGGBB (el alfa se tira)");
+iguales(L.parsearTextoPaleta("no hay ni un color"), null, "texto sin colores: null");
+iguales(L.colorDeTrozo("$ff8800"), [255, 136, 0], "un color también puede venir con $ delante");
+
+/* .pal binario: RIFF … PAL data, cuenta y cuatro bytes por color */
+const riff = new Uint8Array(24 + 8);
+riff.set(bytesDe("RIFF"), 0);
+riff.set(bytesDe("PAL "), 8);
+riff.set(bytesDe("data"), 12);
+riff[20] = 0x00; riff[21] = 0x03;   // versión
+riff[22] = 2; riff[23] = 0;          // dos colores
+riff.set([10, 20, 30, 0, 40, 50, 60, 0], 24);
+iguales(L.parsearRiffPal(riff), { nombre: "", colores: [[10, 20, 30], [40, 50, 60]] },
+  "pal binario: la cuenta manda y el cuarto byte de cada color se ignora");
+iguales(L.parsearRiffPal(bytesDe("RIFFxxxxWAVEfmt ")), null, "pal binario: un RIFF que no es PAL, no");
+
+/* .act: 768 bytes, o 772 diciendo cuántos valen */
+const act = new Uint8Array(768);
+act.set([1, 2, 3, 4, 5, 6], 0);
+iguales(L.parsearAct(act).colores.length, 256, "act de 768 bytes: 256 colores, relleno incluido");
+iguales(L.parsearAct(act).colores[1], [4, 5, 6], "act: los colores salen en orden");
+const act772 = new Uint8Array(772);
+act772.set([9, 9, 9, 8, 8, 8], 0);
+act772[768] = 0; act772[769] = 2;   // solo dos valen
+iguales(L.parsearAct(act772).colores, [[9, 9, 9], [8, 8, 8]], "act de 772: la cuenta recorta el relleno");
+iguales(L.parsearAct(new Uint8Array(100)), null, "act: con otro tamaño no es un act");
+
+/* El repartidor mira el contenido, no la extensión */
+iguales(L.parsearArchivoPaleta(bytesDe(GPL)).nombre, "Nyx8", "reparte un gpl por su cabecera");
+iguales(L.parsearArchivoPaleta(bytesDe(JASC)).colores.length, 2, "reparte un pal de texto");
+iguales(L.parsearArchivoPaleta(riff).colores.length, 2, "reparte un pal binario");
+iguales(L.parsearArchivoPaleta(act).colores.length, 256, "reparte un act (binario, no cuela como texto)");
+iguales(L.parsearArchivoPaleta(bytesDe("#112233 #445566")).colores.length, 2, "reparte una lista de hex");
+iguales(L.parsearArchivoPaleta(bytesDe("esto no es una paleta")), null, "un fichero sin colores es null");
+iguales(L.parsearArchivoPaleta(new Uint8Array(0)), null, "un fichero vacío es null");
+
+/* --- coloresDeImagen: una tira de muestras es una paleta --- */
+const tira = imagen(4, 1, [[255, 0, 0, 255], [0, 255, 0, 255], [255, 0, 0, 255], [0, 0, 255, 0]]);
+iguales(L.coloresDeImagen(tira, 256), [[255, 0, 0], [0, 255, 0]],
+  "colores distintos en orden de aparición, sin repetir y sin los transparentes");
+iguales(L.coloresDeImagen(tira, 1), [[255, 0, 0]], "y como mucho los que se pidan");
 
 console.log(`OK — ${total} comprobaciones superadas.`);

@@ -173,6 +173,11 @@
               <input type="text" id="in-paleta" placeholder="URL de Lospec, slug o códigos hex" spellcheck="false">
               <button class="boton" id="btn-cargar-paleta">Cargar</button>
             </div>
+            <div class="fila">
+              <button class="boton" id="btn-paleta-archivo" title="Abrir una paleta guardada en el disco">Desde archivo…</button>
+              <span class="nota">.gpl · .pal · .hex · .txt · .act · o una imagen de muestras</span>
+            </div>
+            <input type="file" id="input-paleta" accept=".gpl,.pal,.hex,.txt,.act,.png,.gif,.bmp,.webp,image/*" hidden>
             <div id="paletas-recientes"></div>
             <div id="nombre-paleta"></div>
             <div id="muestras-paleta"></div>

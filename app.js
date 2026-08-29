@@ -12,7 +12,7 @@
    ⚠️ Subir VERSION en cada despliegue: se muestra en la esquina
    de estado para verificar qué versión corre el dispositivo.
    ============================================================ */
-const VERSION = "v2026-08-29c";
+const VERSION = "v2026-08-29d";
 const MANTENER_PANTALLA = false;
 const PANTALLA_COMPLETA = false;
 
@@ -209,8 +209,50 @@ function pintarRecientes() {
   }
 }
 
+/* Una paleta del disco. Los ficheros de paleta los entiende logica.js; aquí
+   solo se decide si el fichero es una imagen de muestras (que hay que
+   decodificar) o uno de los formatos de texto o binarios. */
+const MAX_COLORES_PALETA = 256;
+const EXT_PALETA = /\.(gpl|pal|hex|txt|act)$/i;
+
+async function cargarPaletaDeArchivo(archivo) {
+  const base = archivo.name.replace(/\.[^.]+$/, "");
+  if (/\.(ase|aseprite)$/i.test(archivo.name)) {
+    avisar("Los .ase y .aseprite no los leo: guarda la paleta como .gpl, .pal, .hex o .png.");
+    return;
+  }
+  try {
+    // Una imagen de muestras: valen los colores distintos que tenga, en orden.
+    if (esImagen(archivo) && !EXT_PALETA.test(archivo.name)) {
+      const img = await archivoAImagen(archivo);
+      const colores = coloresDeImagen(img, MAX_COLORES_PALETA);
+      if (!colores.length) { avisar("Esa imagen no tiene ni un píxel opaco del que sacar colores."); return; }
+      fijarPaleta({ nombre: base, colores });
+      avisar(colores.length >= MAX_COLORES_PALETA
+        ? `Esa imagen trae muchos colores: me quedo con los ${MAX_COLORES_PALETA} primeros.` : "");
+      return;
+    }
+    const paleteado = parsearArchivoPaleta(new Uint8Array(await archivo.arrayBuffer()));
+    if (!paleteado) {
+      avisar("No entiendo ese fichero. Valen .gpl, .pal, .hex, .txt, .act o una imagen de muestras.");
+      return;
+    }
+    fijarPaleta({ nombre: paleteado.nombre || base, colores: paleteado.colores });
+    avisar("");
+  } catch (e) {
+    avisar(`No se pudo leer ${archivo.name}.`);
+  }
+}
+
 $("btn-cargar-paleta").addEventListener("click", cargarPaleta);
 $("in-paleta").addEventListener("keydown", (e) => { if (e.key === "Enter") cargarPaleta(); });
+$("btn-paleta-archivo").addEventListener("click", () => $("input-paleta").click());
+$("input-paleta").addEventListener("change", (e) => {
+  const archivo = e.target.files[0];
+  // Vaciarlo deja volver a elegir el mismo fichero (si no, no hay "change").
+  e.target.value = "";
+  if (archivo) cargarPaletaDeArchivo(archivo);
+});
 
 /* ============================================================
    Proceso: ReSize → ReVer → RePalette (→ Máscaras, rama aparte)
